@@ -1,0 +1,250 @@
+/**
+ * All of the CSS for your public-facing functionality should be
+ * included in this file.
+ */
+
+:root {
+	--uleam-primary: #D32F2F;
+	--uleam-primary-hover: #B71C1C;
+	--uleam-bg-light: #FFEBEE;
+	--uleam-text-main: #2D3748;
+	--uleam-success: #00897B;
+	--uleam-font-main: 'Inter', sans-serif;
+	--uleam-font-data: 'Roboto Mono', monospace;
+}
+
+.bform-unavailable-message,
+.bform-render-placeholder {
+	border: 1px solid #e2e8f0;
+	border-radius: 10px;
+	padding: 14px;
+	background: #fff;
+	color: var(--uleam-text-main);
+	margin: 12px 0;
+	font-family: var(--uleam-font-main);
+}
+
+.bform-success-message {
+	max-width: 760px;
+	margin: 16px auto 0;
+	padding: 12px 14px;
+	border: 1px solid var(--uleam-success);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--uleam-success);
+	font-family: var(--uleam-font-main);
+	font-weight: 600;
+}
+
+.bform-unavailable-message {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary-hover);
+}
+
+.bform-render-placeholder h3 {
+	margin: 0 0 6px;
+}
+
+.bform-render-placeholder p {
+	margin: 0;
+	color: #64748b;
+}
+
+.bform-runtime-form {
+	max-width: 760px;
+	margin: 16px auto;
+	padding: 22px;
+	border: 0;
+	border-radius: 14px;
+	border-top: 10px solid var(--uleam-primary);
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+	font-family: var(--uleam-font-main);
+	color: var(--uleam-text-main);
+}
+
+.bform-runtime-form h3 {
+	margin: 0 0 16px;
+	font-size: 34px;
+	line-height: 1.2;
+	font-weight: 500;
+}
+
+.bform-runtime-section {
+	margin: 0 0 14px;
+	padding: 18px 16px;
+	border-radius: 12px;
+	border: 1px solid #dbe2ea;
+	background: #fff;
+}
+
+.bform-runtime-section h4 {
+	margin: 0 0 12px;
+	font-size: 23px;
+	font-weight: 500;
+}
+
+.bform-runtime-field {
+	margin-bottom: 16px;
+}
+
+.bform-runtime-field label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: 600;
+	font-size: 15px;
+}
+
+.bform-runtime-field-description {
+	margin: -2px 0 8px;
+	font-size: 13px;
+	line-height: 1.4;
+	color: #64748b;
+}
+
+.bform-runtime-field input[type='text'],
+.bform-runtime-field input[type='email'],
+.bform-runtime-field input[type='number'],
+.bform-runtime-field input[type='date'],
+.bform-runtime-field input[type='file'] {
+	width: 100%;
+	max-width: none;
+	padding: 10px 2px;
+	border: 0;
+	border-bottom: 1px solid #cbd5e1;
+	border-radius: 0;
+	outline: none;
+	background: transparent;
+	font-size: 15px;
+	transition: border-color 0.2s ease;
+}
+
+.bform-runtime-field textarea,
+.bform-runtime-field select {
+	width: 100%;
+	max-width: none;
+	padding: 10px 12px;
+	border: 1px solid #dbe2ea;
+	border-radius: 8px;
+	outline: none;
+	background: #fff;
+	font-size: 15px;
+	transition: border-color 0.2s ease;
+}
+
+.bform-runtime-field input[type='text']:focus,
+.bform-runtime-field input[type='email']:focus,
+.bform-runtime-field input[type='number']:focus,
+.bform-runtime-field input[type='date']:focus,
+.bform-runtime-field input[type='file']:focus,
+.bform-runtime-field textarea:focus,
+.bform-runtime-field select:focus {
+	border-color: var(--uleam-primary);
+}
+
+.bform-runtime-choice {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	font-weight: 400;
+	font-size: 16px;
+	cursor: pointer;
+}
+
+.bform-runtime-choice input {
+	width: 20px;
+	height: 20px;
+	accent-color: var(--uleam-primary);
+}
+
+.bform-runtime-link {
+	display: inline-block;
+	margin-top: 6px;
+	color: var(--uleam-primary);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.bform-runtime-link:hover {
+	text-decoration: underline;
+}
+
+.bform-runtime-canvas {
+	border: 1px solid #dbe2ea;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.bform-runtime-actions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.bform-runtime-actions button {
+	min-height: 40px;
+	padding: 0 18px;
+	border-radius: 8px;
+	border: 1px solid var(--uleam-primary);
+	background: #fff;
+	background-image: none;
+	cursor: pointer;
+	font-weight: 600;
+	transition: all 0.2s ease;
+}
+
+.bform-runtime-back {
+	color: #fff;
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+}
+
+.bform-runtime-next {
+	color: #fff;
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+}
+
+.bform-runtime-submit {
+	color: var(--uleam-primary);
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+}
+
+.bform-runtime-back:hover,
+.bform-runtime-next:hover {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary-hover);
+}
+
+.bform-runtime-submit:hover {
+	color: #fff;
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+}
+
+.bform-runtime-actions button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+	.bform-runtime-form {
+		padding: 16px;
+		border-radius: 10px;
+	}
+
+	.bform-runtime-form h3 {
+		font-size: 28px;
+	}
+
+	.bform-runtime-section h4 {
+		font-size: 20px;
+	}
+}
