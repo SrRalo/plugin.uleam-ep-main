@@ -77,6 +77,95 @@
 		return value.toString().trim() !== '';
 	}
 
+	function isRequiredField($field) {
+		return ($field.attr('data-required') || '0') === '1';
+	}
+
+	function clearSectionValidity($section) {
+		$section.find('[data-field-id]').each(function() {
+			if (typeof this.setCustomValidity === 'function') {
+				this.setCustomValidity('');
+			}
+		});
+	}
+
+	function validateCurrentSectionRequired($form) {
+		var currentSectionId = $form.data('bformCurrentSectionId') || '';
+		if (!currentSectionId) {
+			return true;
+		}
+
+		var $section = $form.find('[data-section-id="' + currentSectionId + '"]').first();
+		if (!$section.length) {
+			return true;
+		}
+
+		clearSectionValidity($section);
+
+		var requiredMessage = 'Este campo es obligatorio.';
+		var fieldIds = {};
+		var orderedFieldIds = [];
+
+		$section.find('[data-field-id]').each(function() {
+			var fieldId = ($(this).attr('data-field-id') || '').toString();
+			if (!fieldId || fieldIds[fieldId]) {
+				return;
+			}
+			fieldIds[fieldId] = true;
+			orderedFieldIds.push(fieldId);
+		});
+
+		for (var index = 0; index < orderedFieldIds.length; index++) {
+			var targetFieldId = orderedFieldIds[index];
+			var $fieldInputs = $section.find('[data-field-id="' + targetFieldId + '"]');
+			if (!$fieldInputs.length || !isRequiredField($fieldInputs.first())) {
+				continue;
+			}
+
+			var firstInput = $fieldInputs.get(0);
+			if (!firstInput) {
+				continue;
+			}
+
+			var tagName = (firstInput.tagName || '').toLowerCase();
+			var inputType = ((firstInput.type || '').toLowerCase());
+			var isValid = true;
+
+			if (inputType === 'radio' || inputType === 'checkbox') {
+				isValid = $fieldInputs.filter(':checked').length > 0;
+			} else if (inputType === 'file') {
+				isValid = !!(firstInput.files && firstInput.files.length);
+				if (!isValid) {
+					isValid = hasValue($fieldInputs.first().val());
+				}
+			} else if (tagName === 'select') {
+				isValid = hasValue($fieldInputs.first().val());
+			} else {
+				isValid = hasValue($fieldInputs.first().val());
+			}
+
+			if (!isValid) {
+				$fieldInputs.each(function() {
+					if (typeof this.setCustomValidity === 'function') {
+						this.setCustomValidity(requiredMessage);
+					}
+				});
+
+				if (typeof firstInput.reportValidity === 'function') {
+					firstInput.reportValidity();
+				}
+
+				if (typeof firstInput.focus === 'function') {
+					firstInput.focus();
+				}
+
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	function isSectionAnswered(schema, sectionId, localState) {
 		var section = getSectionById(schema, sectionId);
 		if (!section || !Array.isArray(section.fields) || !section.fields.length) {
@@ -345,6 +434,10 @@
 				var sectionId = $section.data('section-id');
 				var currentSectionId = $form.data('bformCurrentSectionId') || '';
 
+				if (typeof this.setCustomValidity === 'function') {
+					this.setCustomValidity('');
+				}
+
 				if (!sectionId || sectionId !== currentSectionId) {
 					renderVisibility($form, schema);
 					updateActionButtons($form, schema);
@@ -358,6 +451,10 @@
 			$form.on('click', '.bform-runtime-next', function() {
 				var currentSectionId = $form.data('bformCurrentSectionId') || '';
 				if (!currentSectionId) {
+					return;
+				}
+
+				if (!validateCurrentSectionRequired($form)) {
 					return;
 				}
 
@@ -393,7 +490,11 @@
 				updateActionButtons($form, schema);
 			});
 
-			$form.on('submit', function() {
+			$form.on('submit', function(event) {
+				if (!validateCurrentSectionRequired($form)) {
+					event.preventDefault();
+					return;
+				}
 				updateActionButtons($form, schema);
 			});
 		});

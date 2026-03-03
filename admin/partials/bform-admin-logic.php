@@ -34,14 +34,13 @@
 	</nav>
 
 	<header class="bform-logic-header">
-		<div>
+		<div class="bform-title-section">
 			<h1><?php esc_html_e( 'Reglas del Formulario', 'bform' ); ?></h1>
 			<p><?php esc_html_e( 'Define qué paso mostrar según las respuestas del usuario.', 'bform' ); ?></p>
 			<p><strong><?php esc_html_e( 'Formulario:', 'bform' ); ?></strong> <?php echo esc_html( $logic_form_name ); ?></p>
 		</div>
 		<div class="bform-logic-header-actions">
-			<a class="button" href="<?php echo esc_url( $logic_close_url ); ?>"><?php esc_html_e( 'Volver al Constructor', 'bform' ); ?></a>
-		<a class="bform-logic-close" href="<?php echo esc_url( $logic_close_url ); ?>">×</a>
+			<a class="button bform-btn bform-btn-outline" href="<?php echo esc_url( $logic_close_url ); ?>"><?php esc_html_e( 'Volver al Constructor', 'bform' ); ?></a>
 		</div>
 	</header>
 
@@ -49,7 +48,7 @@
 
 	<div class="bform-logic-grid">
 		<section class="bform-logic-card">
-			<h2><?php esc_html_e( 'Crear regla', 'bform' ); ?></h2>
+			<span class="bform-card-title"><?php esc_html_e( 'Crear regla', 'bform' ); ?></span>
 
 			<div class="bform-logic-row bform-logic-row-3">
 				<div class="bform-logic-field">
@@ -91,25 +90,23 @@
 			</div>
 
 			<div class="bform-logic-actions-top">
-				<button type="button" class="button button-primary bform-logic-add"><?php esc_html_e( '+ Añadir regla', 'bform' ); ?></button>
+				<button type="button" class="button bform-btn bform-btn-success bform-logic-add"><?php esc_html_e( 'Añadir regla', 'bform' ); ?></button>
 			</div>
 
-			<hr />
-
-			<h2><?php esc_html_e( 'Organizar pasos', 'bform' ); ?></h2>
+			<span class="bform-card-title bform-card-title-sections"><?php esc_html_e( 'Organizar pasos', 'bform' ); ?></span>
 			<div class="bform-logic-sections-manager"></div>
-			<button type="button" class="button bform-logic-add-section"><?php esc_html_e( '+ Crear Sección', 'bform' ); ?></button>
+			<button type="button" class="button bform-btn bform-btn-outline bform-logic-add-section"><?php esc_html_e( 'Crear Sección', 'bform' ); ?></button>
 		</section>
 
 		<section class="bform-flow-card">
-			<h2><?php esc_html_e( 'Recorrido del formulario', 'bform' ); ?></h2>
+			<span class="bform-card-title"><?php esc_html_e( 'Recorrido del formulario', 'bform' ); ?></span>
 			<div class="bform-flow-map bform-logic-graph-view"></div>
 		</section>
 	</div>
 
 	<section class="bform-logic-table-card">
-		<h2><?php esc_html_e( 'Reglas guardadas', 'bform' ); ?></h2>
-		<table class="widefat fixed striped bform-table bform-logic-table">
+		<span class="bform-card-title"><?php esc_html_e( 'Reglas guardadas', 'bform' ); ?></span>
+		<table class="bform-table bform-logic-table">
 			<thead>
 				<tr>
 					<th><?php esc_html_e( 'Regla', 'bform' ); ?></th>
@@ -123,7 +120,7 @@
 	</section>
 
 	<footer class="bform-logic-footer">
-		<a class="button" href="<?php echo esc_url( $logic_close_url ); ?>"><?php esc_html_e( 'Volver al Constructor', 'bform' ); ?></a>
-		<button type="button" class="button button-primary bform-cta bform-save-logic"><?php esc_html_e( 'Guardar cambios', 'bform' ); ?></button>
+		<a class="button bform-btn bform-btn-outline" href="<?php echo esc_url( $logic_close_url ); ?>"><?php esc_html_e( 'Descartar', 'bform' ); ?></a>
+		<button type="button" class="button bform-btn bform-btn-primary bform-save-logic"><?php esc_html_e( 'Guardar cambios', 'bform' ); ?></button>
 	</footer>
 </div>

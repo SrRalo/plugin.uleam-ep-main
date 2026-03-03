@@ -31,7 +31,9 @@
 				<input type="hidden" name="filter_form_id" value="<?php echo esc_attr( (string) $analytics_filter_form_id ); ?>" />
 			<?php endif; ?>
 			<input type="search" name="s" value="<?php echo esc_attr( $analytics_search_term ); ?>" placeholder="<?php esc_attr_e( 'Buscar formularios o respuestas...', 'bform' ); ?>" />
-			<button class="button" type="submit"><?php esc_html_e( 'Buscar', 'bform' ); ?></button>
+			<button class="button bform-analytics-search-btn" type="submit" aria-label="<?php esc_attr_e( 'Buscar', 'bform' ); ?>">
+				<span class="dashicons dashicons-search" aria-hidden="true"></span>
+			</button>
 			<a class="button button-primary bform-cta" href="<?php echo esc_url( $analytics_export_url ); ?>"><?php esc_html_e( 'Descargar respuestas', 'bform' ); ?></a>
 		</form>
 	</header>

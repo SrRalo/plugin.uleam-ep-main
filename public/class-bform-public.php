@@ -257,6 +257,7 @@ class Bform_Public {
 		$client_ip = is_string( $client_ip ) && filter_var( $client_ip, FILTER_VALIDATE_IP ) ? $client_ip : '';
 
 		$datos_usuario = array();
+		$missing_required_fields = array();
 		foreach ( $sections as $section ) {
 			if ( ! is_array( $section ) || empty( $section['fields'] ) || ! is_array( $section['fields'] ) ) {
 				continue;
@@ -275,11 +276,15 @@ class Bform_Public {
 				$field_type = isset( $field['type'] ) ? sanitize_key( $field['type'] ) : 'text';
 				$input_name = 'bform_' . $field_id;
 				$field_options = $this->get_field_option_values( $field );
+				$field_is_required = $this->is_field_required( $field );
+				$field_label = isset( $field['label'] ) ? sanitize_text_field( (string) $field['label'] ) : __( 'Campo', 'bform' );
 
 				if ( 'file' === $field_type ) {
 					$clean_file_value = $this->sanitize_uploaded_file_value( $input_name, $field );
 					if ( '' !== $clean_file_value ) {
 						$datos_usuario[ $field_id ] = $clean_file_value;
+					} elseif ( $field_is_required ) {
+						$missing_required_fields[] = $field_label;
 					}
 					continue;
 				}
@@ -287,6 +292,9 @@ class Bform_Public {
 				$raw_value = isset( $_POST[ $input_name ] ) ? wp_unslash( $_POST[ $input_name ] ) : null;
 
 				if ( null === $raw_value ) {
+					if ( $field_is_required ) {
+						$missing_required_fields[] = $field_label;
+					}
 					continue;
 				}
 
@@ -308,6 +316,8 @@ class Bform_Public {
 
 					if ( ! empty( $clean_values ) ) {
 						$datos_usuario[ $field_id ] = $clean_values;
+					} elseif ( $field_is_required ) {
+						$missing_required_fields[] = $field_label;
 					}
 					continue;
 				}
@@ -350,8 +360,14 @@ class Bform_Public {
 
 				if ( '' !== $clean_value ) {
 					$datos_usuario[ $field_id ] = $clean_value;
+				} elseif ( $field_is_required ) {
+					$missing_required_fields[] = $field_label;
 				}
 			}
+		}
+
+		if ( ! empty( $missing_required_fields ) ) {
+			wp_die( esc_html__( 'Completa los campos obligatorios antes de enviar el formulario.', 'bform' ), 400 );
 		}
 
 		$metadatos = array(
@@ -410,6 +426,9 @@ class Bform_Public {
 		$description_enabled = ! empty( $settings['description_enabled'] );
 		$description_text = isset( $settings['description_text'] ) ? sanitize_textarea_field( (string) $settings['description_text'] ) : '';
 		$description_text = trim( preg_replace( '/\s+/', ' ', $description_text ) );
+		$default_placeholder = esc_attr__( 'Escriba aqui...', 'bform' );
+		$is_required = $this->is_field_required( $field );
+		$required_data_attr = $is_required ? '1' : '0';
 		$html       = '<div class="bform-runtime-field">';
 		$html      .= '<label for="' . esc_attr( $input_name ) . '">' . esc_html( $field_label ) . '</label>';
 		if ( $description_enabled && '' !== $description_text ) {
@@ -418,10 +437,10 @@ class Bform_Public {
 
 		switch ( $field_type ) {
 			case 'textarea':
-				$html .= '<textarea id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '"></textarea>';
+				$html .= '<textarea id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '"></textarea>';
 				break;
 			case 'email':
-				$html .= '<input type="email" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+				$html .= '<input type="email" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				break;
 			case 'number':
 				$number_preset = $this->get_number_preset( $field );
@@ -430,13 +449,13 @@ class Bform_Public {
 						? __( 'Ingresa exactamente 10 dígitos para la cédula.', 'bform' )
 						: __( 'Ingresa exactamente 10 dígitos para el teléfono.', 'bform' );
 
-					$html .= '<input type="text" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" title="' . esc_attr( $title_message ) . '" data-number-preset="' . esc_attr( $number_preset ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+					$html .= '<input type="text" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" title="' . esc_attr( $title_message ) . '" data-number-preset="' . esc_attr( $number_preset ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				} elseif ( 'edad_1_150' === $number_preset ) {
-					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" min="1" max="150" step="1" title="' . esc_attr__( 'Ingresa una edad válida entre 1 y 150 años.', 'bform' ) . '" data-number-preset="' . esc_attr( $number_preset ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" min="1" max="150" step="1" title="' . esc_attr__( 'Ingresa una edad válida entre 1 y 150 años.', 'bform' ) . '" data-number-preset="' . esc_attr( $number_preset ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				} elseif ( 'decimal_2' === $number_preset ) {
-					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" step="0.01" inputmode="decimal" title="' . esc_attr__( 'Ingresa un número con máximo 2 decimales.', 'bform' ) . '" data-number-preset="' . esc_attr( $number_preset ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" step="0.01" inputmode="decimal" title="' . esc_attr__( 'Ingresa un número con máximo 2 decimales.', 'bform' ) . '" data-number-preset="' . esc_attr( $number_preset ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				} else {
-					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				}
 				break;
 			case 'radio':
@@ -451,14 +470,14 @@ class Bform_Public {
 					$input_type = 'radio' === $field_type ? 'radio' : 'checkbox';
 					$option_name = 'radio' === $field_type ? $input_name : $input_name . '[]';
 					$html .= '<label class="bform-runtime-choice" for="' . esc_attr( $option_id ) . '">';
-					$html .= '<input type="' . esc_attr( $input_type ) . '" id="' . esc_attr( $option_id ) . '" name="' . esc_attr( $option_name ) . '" value="' . esc_attr( $option_value ) . '" data-field-id="' . esc_attr( $field_id ) . '" /> ';
+					$html .= '<input type="' . esc_attr( $input_type ) . '" id="' . esc_attr( $option_id ) . '" name="' . esc_attr( $option_name ) . '" value="' . esc_attr( $option_value ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" /> ';
 					$html .= esc_html( $option_value );
 					$html .= '</label>';
 				}
 				break;
 			case 'select':
 				$options = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
-				$html .= '<select id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '">';
+				$html .= '<select id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '">';
 				foreach ( $options as $option_label ) {
 					$option_value = sanitize_text_field( (string) $option_label );
 					$html .= '<option value="' . esc_attr( $option_value ) . '">' . esc_html( $option_value ) . '</option>';
@@ -466,7 +485,7 @@ class Bform_Public {
 				$html .= '</select>';
 				break;
 			case 'date':
-				$html .= '<input type="date" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+				$html .= '<input type="date" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				break;
 			case 'file':
 				$file_extensions = $this->get_allowed_file_extensions( $field );
@@ -480,7 +499,7 @@ class Bform_Public {
 					$accept_values[] = '.' . $extension;
 				}
 				$accept_attr = implode( ',', array_values( array_unique( $accept_values ) ) );
-				$html .= '<input type="file" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" accept="' . esc_attr( $accept_attr ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+				$html .= '<input type="file" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" accept="' . esc_attr( $accept_attr ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				break;
 			case 'link':
 				$link_url = isset( $settings['url'] ) ? esc_url( $settings['url'] ) : '';
@@ -494,7 +513,7 @@ class Bform_Public {
 				$html .= '<canvas class="bform-runtime-canvas" data-field-id="' . esc_attr( $field_id ) . '" width="320" height="120"></canvas>';
 				break;
 			default:
-				$html .= '<input type="text" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" />';
+				$html .= '<input type="text" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				break;
 		}
 
@@ -755,6 +774,25 @@ class Bform_Public {
 		}
 
 		return 'data:image/' . strtolower( $matches[1] ) . ';base64,' . $payload;
+	}
+
+	/**
+	 * Resolve whether a field is required.
+	 *
+	 * @since    1.0.0
+	 * @param    array $field Field definition.
+	 * @return   bool
+	 */
+	private function is_field_required( $field ) {
+		if ( ! is_array( $field ) ) {
+			return true;
+		}
+
+		if ( ! array_key_exists( 'required', $field ) ) {
+			return true;
+		}
+
+		return ! empty( $field['required'] );
 	}
 
 }

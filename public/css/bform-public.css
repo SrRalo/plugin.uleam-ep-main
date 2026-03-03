@@ -120,6 +120,34 @@
 	transition: border-color 0.2s ease;
 }
 
+.bform-runtime-field input[type='text'],
+.bform-runtime-field input[type='number'] {
+	color: #64748b;
+}
+
+.bform-runtime-field input[type='text']::placeholder,
+.bform-runtime-field input[type='number']::placeholder {
+	color: #94a3b8;
+	opacity: 1;
+}
+
+.bform-runtime-field input[type='text']::-webkit-input-placeholder,
+.bform-runtime-field input[type='number']::-webkit-input-placeholder {
+	color: #94a3b8;
+	opacity: 1;
+}
+
+.bform-runtime-field input[type='text']::-moz-placeholder,
+.bform-runtime-field input[type='number']::-moz-placeholder {
+	color: #94a3b8;
+	opacity: 1;
+}
+
+.bform-runtime-field input[type='text']:-ms-input-placeholder,
+.bform-runtime-field input[type='number']:-ms-input-placeholder {
+	color: #94a3b8;
+}
+
 .bform-runtime-field textarea,
 .bform-runtime-field select {
 	width: 100%;

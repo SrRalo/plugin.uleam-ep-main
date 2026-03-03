@@ -28,7 +28,7 @@
 			</div>
 		</div>
 		<div class="bform-builder-actions">
-			<input type="text" class="bform-form-name-input" value="<?php echo esc_attr( $constructor_form_name ); ?>" placeholder="<?php esc_attr_e( 'Nombre del formulario', 'bform' ); ?>" />
+			<input type="text" class="bform-form-name-input" value="<?php echo esc_attr( $constructor_form_name ); ?>" placeholder="<?php esc_attr_e( 'agregue un nombre', 'bform' ); ?>" />
 			<button type="button" class="button button-primary bform-cta bform-save-constructor bform-save-constructor--large"><?php esc_html_e( 'Guardar formulario', 'bform' ); ?></button>
 		</div>
 	</header>
@@ -71,6 +71,13 @@
 				<div class="bform-prop-item">
 					<label><?php esc_html_e( 'Título del campo', 'bform' ); ?></label>
 					<input type="text" class="bform-prop-label" value="" />
+				</div>
+
+				<div class="bform-prop-item">
+					<label class="bform-prop-checkbox-label">
+						<input type="checkbox" class="bform-prop-required-toggle" value="1" />
+						<span><?php esc_html_e( 'Deshabilitar obligatoriedad de la pregunta', 'bform' ); ?></span>
+					</label>
 				</div>
 
 				<div class="bform-prop-item">

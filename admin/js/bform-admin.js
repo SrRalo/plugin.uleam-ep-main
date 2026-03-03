@@ -601,7 +601,7 @@
 				type: type,
 				label: '',
 				placeholder: '',
-				required: false,
+				required: true,
 				settings: {
 					description_enabled: false,
 					description_text: ''
@@ -741,6 +741,10 @@
 			$label.attr('placeholder', getLabelSuggestion(field.type));
 
 			field.settings = field.settings || {};
+			if (field.required === undefined) {
+				field.required = true;
+			}
+			$app.find('.bform-prop-required-toggle').prop('checked', !field.required);
 			$app.find('.bform-prop-description-toggle').prop('checked', !!field.settings.description_enabled);
 			$app.find('.bform-prop-description-input').val(field.settings.description_text || '');
 			if (field.settings.description_enabled) {
@@ -811,7 +815,7 @@
 					}
 					$field.append('<div class="bform-input-placeholder">' + $('<div/>').text(helperText).html() + '</div>');
 
-						if (field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') {
+						if (field.type === 'radio' || field.type === 'select') {
 							$field.append('<div class="bform-branching-action"><button type="button" class="button button-secondary bform-open-branching" data-section-index="' + sectionIndex + '" data-field-index="' + fieldIndex + '">Configurar ramificación</button></div>');
 						}
 					$section.append($field);
@@ -1114,6 +1118,13 @@
 			syncSelectedFieldPreview();
 		});
 
+		$app.on('change', '.bform-prop-required-toggle', function() {
+			var field = currentField();
+			if (!field) { return; }
+			field.required = !$(this).is(':checked');
+			persistConstructorDraft();
+		});
+
 		$app.on('change', '.bform-prop-date-format-select', function() {
 			var field = currentField();
 			if (!field || field.type !== 'date') { return; }
@@ -1270,6 +1281,11 @@
 			var section = schema.sections[sectionIndex] || {};
 			var field = (section.fields && section.fields[fieldIndex]) ? section.fields[fieldIndex] : {};
 
+			if (!field || (field.type !== 'radio' && field.type !== 'select')) {
+				showAdminToast('La ramificación solo está disponible para campos de selección única.', 'error');
+				return;
+			}
+
 			var params = new URLSearchParams();
 			if (formId) {
 				params.set('form_id', String(formId));
@@ -1337,18 +1353,19 @@
 					}
 
 					var fieldType = (field.type || 'text').toString();
+					if (fieldType !== 'radio' && fieldType !== 'select') {
+						return;
+					}
 					var settings = field.settings && typeof field.settings === 'object' ? field.settings : {};
 					var rawChoices = Array.isArray(settings.options) ? settings.options : [];
 					var choices = [];
 
-					if (fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'select') {
-						rawChoices.forEach(function(choice) {
-							var cleanChoice = (choice || '').toString().trim();
-							if (cleanChoice) {
-								choices.push(cleanChoice);
-							}
-						});
-					}
+					rawChoices.forEach(function(choice) {
+						var cleanChoice = (choice || '').toString().trim();
+						if (cleanChoice) {
+							choices.push(cleanChoice);
+						}
+					});
 
 					options.push({
 						id: (field.id || '').toString(),
@@ -1464,6 +1481,29 @@
 			}) || null;
 		}
 
+		function sectionIdByFieldId(fieldId) {
+			if (!fieldId) {
+				return '';
+			}
+
+			var foundSection = null;
+			schema.sections.some(function(section) {
+				var fields = Array.isArray(section && section.fields) ? section.fields : [];
+				var hasField = fields.some(function(field) {
+					return field && field.id && String(field.id) === String(fieldId);
+				});
+
+				if (hasField) {
+					foundSection = section;
+					return true;
+				}
+
+				return false;
+			});
+
+			return foundSection && foundSection.id ? String(foundSection.id) : '';
+		}
+
 		function getFieldChoices(fieldId) {
 			var found = fieldOptionById(fieldId);
 			if (!found || !Array.isArray(found.choices)) {
@@ -1558,6 +1598,14 @@
 				$sourceSection.append('<option value="' + id + '">' + label + '</option>');
 				$targetSection.append('<option value="' + id + '">' + label + '</option>');
 			});
+
+			var autoSourceSectionId = sectionIdByFieldId($fieldSelect.val() || '');
+			if (autoSourceSectionId) {
+				$sourceSection.val(autoSourceSectionId);
+				$sourceSection.prop('disabled', true);
+			} else {
+				$sourceSection.prop('disabled', false);
+			}
 
 			syncLogicValueControl();
 		}
@@ -1681,7 +1729,7 @@
 			var sourceField = $app.find('.bform-logic-source-field').val() || '';
 			var operator = $app.find('.bform-logic-operator').val() || 'equals';
 			var value = getRuleValueFromEditor();
-			var sourceSection = $app.find('.bform-logic-source-section').val() || '';
+			var sourceSection = sectionIdByFieldId(sourceField) || $app.find('.bform-logic-source-section').val() || '';
 			var action = $app.find('.bform-logic-action').val() || 'jump_section';
 			var targetSection = $app.find('.bform-logic-target-section').val() || '';
 
@@ -1699,6 +1747,17 @@
 		});
 
 		$app.on('change', '.bform-logic-source-field', function() {
+			var sourceFieldId = $(this).val() || '';
+			var sourceSectionId = sectionIdByFieldId(sourceFieldId);
+			var $sourceSection = $app.find('.bform-logic-source-section');
+
+			if (sourceSectionId) {
+				$sourceSection.val(sourceSectionId);
+				$sourceSection.prop('disabled', true);
+			} else {
+				$sourceSection.prop('disabled', false);
+			}
+
 			syncLogicValueControl();
 		});
 

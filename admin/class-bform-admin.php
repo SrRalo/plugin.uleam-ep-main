@@ -228,7 +228,7 @@ class Bform_Admin {
 			}
 		}
 
-		$constructor_form_name = ! empty( $constructor_form['nombre'] ) ? $constructor_form['nombre'] : __( 'Nuevo Formulario', 'bform' );
+		$constructor_form_name = ! empty( $constructor_form['nombre'] ) ? $constructor_form['nombre'] : '';
 
 		$principal_page_url   = admin_url( 'admin.php?page=bform-principal' );
 		$constructor_page_url = admin_url( 'admin.php?page=bform-constructor' );
@@ -406,7 +406,7 @@ class Bform_Admin {
 					'type' => $type,
 					'label' => ! empty( $field['label'] ) ? sanitize_text_field( $field['label'] ) : __( 'Campo', 'bform' ),
 					'placeholder' => ! empty( $field['placeholder'] ) ? sanitize_text_field( $field['placeholder'] ) : '',
-					'required' => ! empty( $field['required'] ),
+					'required' => ! array_key_exists( 'required', $field ) ? true : ! empty( $field['required'] ),
 					'settings' => $settings,
 				);
 
