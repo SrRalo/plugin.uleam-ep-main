@@ -277,7 +277,15 @@ class Bform_Public {
 				$input_name = 'bform_' . $field_id;
 				$field_options = $this->get_field_option_values( $field );
 				$field_is_required = $this->is_field_required( $field );
+				$field_is_display_only_textarea = $this->is_textarea_display_only( $field );
+				$radio_other_enabled = $this->is_radio_other_option_enabled( $field );
+				$radio_other_value = '__bform_other__';
+				$radio_other_input_name = $input_name . '_other';
 				$field_label = isset( $field['label'] ) ? sanitize_text_field( (string) $field['label'] ) : __( 'Campo', 'bform' );
+
+				if ( $field_is_display_only_textarea ) {
+					continue;
+				}
 
 				if ( 'file' === $field_type ) {
 					$clean_file_value = $this->sanitize_uploaded_file_value( $input_name, $field );
@@ -340,6 +348,18 @@ class Bform_Public {
 						$clean_value = $this->sanitize_date_value( $raw_value, $field );
 						break;
 					case 'radio':
+						$candidate = sanitize_text_field( $raw_value );
+						if ( $radio_other_enabled && $radio_other_value === $candidate ) {
+							$raw_other_value = isset( $_POST[ $radio_other_input_name ] ) ? wp_unslash( $_POST[ $radio_other_input_name ] ) : '';
+							$clean_other_value = substr( sanitize_text_field( (string) $raw_other_value ), 0, 255 );
+							$clean_value = '' !== $clean_other_value ? $clean_other_value : '';
+							break;
+						}
+
+						if ( ! empty( $field_options ) ) {
+							$clean_value = in_array( $candidate, $field_options, true ) ? $candidate : '';
+						}
+						break;
 					case 'select':
 						$candidate = sanitize_text_field( $raw_value );
 						if ( ! empty( $field_options ) ) {
@@ -423,21 +443,42 @@ class Bform_Public {
 		}
 
 		$input_name = 'bform_' . $field_id;
-		$description_enabled = ! empty( $settings['description_enabled'] );
-		$description_text = isset( $settings['description_text'] ) ? sanitize_textarea_field( (string) $settings['description_text'] ) : '';
-		$description_text = trim( preg_replace( '/\s+/', ' ', $description_text ) );
-		$default_placeholder = esc_attr__( 'Escriba aqui...', 'bform' );
-		$is_required = $this->is_field_required( $field );
-		$required_data_attr = $is_required ? '1' : '0';
-		$html       = '<div class="bform-runtime-field">';
-		$html      .= '<label for="' . esc_attr( $input_name ) . '">' . esc_html( $field_label ) . '</label>';
-		if ( $description_enabled && '' !== $description_text ) {
-			$html .= '<p class="bform-runtime-field-description">' . esc_html( $description_text ) . '</p>';
+		$textarea_display_only = $this->is_textarea_display_only( $field );
+		$field_label_plain = sanitize_text_field( wp_strip_all_tags( (string) $field_label ) );
+		if ( '' === $field_label_plain ) {
+			$field_label_plain = __( 'Campo', 'bform' );
+		}
+		$field_label_html = esc_html( $field_label_plain );
+		if ( 'textarea' === $field_type ) {
+			$label_markup = $this->sanitize_textarea_label_markup( (string) $field_label );
+			if ( '' !== trim( wp_strip_all_tags( $label_markup ) ) ) {
+				$field_label_html = $label_markup;
+			}
 		}
 
-		switch ( $field_type ) {
+		$description_enabled = ! empty( $settings['description_enabled'] );
+		$description_text = isset( $settings['description_text'] ) ? $this->sanitize_field_description_markup( (string) $settings['description_text'] ) : '';
+		$description_has_content = '' !== trim( wp_strip_all_tags( $description_text ) );
+		$default_placeholder = esc_attr__( 'Escriba aqui...', 'bform' );
+		$is_required = $this->is_field_required( $field );
+		$required_data_attr = ( $is_required && ! $textarea_display_only ) ? '1' : '0';
+		$field_wrapper_class = 'bform-runtime-field';
+		if ( $textarea_display_only ) {
+			$field_wrapper_class .= ' bform-runtime-field--textarea-display-only';
+		}
+		$html       = '<div class="' . esc_attr( $field_wrapper_class ) . '">';
+		$html      .= '<label for="' . esc_attr( $input_name ) . '">' . $field_label_html . '</label>';
+		if ( $description_enabled && $description_has_content ) {
+			$html .= '<p class="bform-runtime-field-description">' . $description_text . '</p>';
+		}
+
+			switch ( $field_type ) {
 			case 'textarea':
-				$html .= '<textarea id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '"></textarea>';
+				$textarea_attrs = ' id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '"';
+				if ( $textarea_display_only ) {
+					$textarea_attrs .= ' disabled="disabled" aria-disabled="true" class="bform-runtime-textarea-display-only"';
+				}
+				$html .= '<textarea' . $textarea_attrs . '></textarea>';
 				break;
 			case 'email':
 				$html .= '<input type="email" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
@@ -458,8 +499,7 @@ class Bform_Public {
 					$html .= '<input type="number" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';
 				}
 				break;
-			case 'radio':
-			case 'checkbox':
+				case 'radio':
 				$options = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
 				if ( empty( $options ) ) {
 					$options = array( __( 'Opción', 'bform' ) );
@@ -467,13 +507,37 @@ class Bform_Public {
 				foreach ( $options as $option_index => $option_label ) {
 					$option_value = sanitize_text_field( (string) $option_label );
 					$option_id = $input_name . '_' . ( $option_index + 1 );
-					$input_type = 'radio' === $field_type ? 'radio' : 'checkbox';
-					$option_name = 'radio' === $field_type ? $input_name : $input_name . '[]';
 					$html .= '<label class="bform-runtime-choice" for="' . esc_attr( $option_id ) . '">';
-					$html .= '<input type="' . esc_attr( $input_type ) . '" id="' . esc_attr( $option_id ) . '" name="' . esc_attr( $option_name ) . '" value="' . esc_attr( $option_value ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" /> ';
+						$html .= '<input type="radio" id="' . esc_attr( $option_id ) . '" name="' . esc_attr( $input_name ) . '" value="' . esc_attr( $option_value ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" /> ';
 					$html .= esc_html( $option_value );
 					$html .= '</label>';
 				}
+
+					if ( $this->is_radio_other_option_enabled( $field ) ) {
+						$other_option_value = '__bform_other__';
+						$other_option_id = $input_name . '_other';
+						$other_text_input_id = $input_name . '_other_text';
+
+						$html .= '<label class="bform-runtime-choice bform-runtime-choice--other" for="' . esc_attr( $other_option_id ) . '">';
+						$html .= '<input type="radio" id="' . esc_attr( $other_option_id ) . '" name="' . esc_attr( $input_name ) . '" value="' . esc_attr( $other_option_value ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" data-other-radio="1" data-other-input-id="' . esc_attr( $other_text_input_id ) . '" /> ';
+						$html .= esc_html__( 'Otros', 'bform' );
+						$html .= '</label>';
+						$html .= '<input type="text" id="' . esc_attr( $other_text_input_id ) . '" name="' . esc_attr( $input_name . '_other' ) . '" class="bform-runtime-choice-other-input" placeholder="' . esc_attr__( 'Especifica tu respuesta', 'bform' ) . '" data-other-for-field-id="' . esc_attr( $field_id ) . '" disabled="disabled" />';
+					}
+					break;
+				case 'checkbox':
+					$options = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
+					if ( empty( $options ) ) {
+						$options = array( __( 'Opción', 'bform' ) );
+					}
+					foreach ( $options as $option_index => $option_label ) {
+						$option_value = sanitize_text_field( (string) $option_label );
+						$option_id = $input_name . '_' . ( $option_index + 1 );
+						$html .= '<label class="bform-runtime-choice" for="' . esc_attr( $option_id ) . '">';
+						$html .= '<input type="checkbox" id="' . esc_attr( $option_id ) . '" name="' . esc_attr( $input_name . '[]' ) . '" value="' . esc_attr( $option_value ) . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" /> ';
+						$html .= esc_html( $option_value );
+						$html .= '</label>';
+					}
 				break;
 			case 'select':
 				$options = isset( $settings['options'] ) && is_array( $settings['options'] ) ? $settings['options'] : array();
@@ -777,6 +841,111 @@ class Bform_Public {
 	}
 
 	/**
+	 * Resolve whether textarea field is configured as display-only.
+	 *
+	 * @since    1.0.0
+	 * @param    array $field Field definition.
+	 * @return   bool
+	 */
+	private function is_textarea_display_only( $field ) {
+		if ( ! is_array( $field ) ) {
+			return false;
+		}
+
+		$field_type = isset( $field['type'] ) ? sanitize_key( (string) $field['type'] ) : '';
+		if ( 'textarea' !== $field_type ) {
+			return false;
+		}
+
+		$settings = isset( $field['settings'] ) && is_array( $field['settings'] ) ? $field['settings'] : array();
+		return ! empty( $settings['display_only'] );
+	}
+
+	/**
+	 * Resolve whether radio field allows custom "Otros" option.
+	 *
+	 * @since    1.0.0
+	 * @param    array $field Field definition.
+	 * @return   bool
+	 */
+	private function is_radio_other_option_enabled( $field ) {
+		if ( ! is_array( $field ) ) {
+			return false;
+		}
+
+		$field_type = isset( $field['type'] ) ? sanitize_key( (string) $field['type'] ) : '';
+		if ( 'radio' !== $field_type ) {
+			return false;
+		}
+
+		$settings = isset( $field['settings'] ) && is_array( $field['settings'] ) ? $field['settings'] : array();
+		return ! empty( $settings['allow_other_option'] );
+	}
+
+	/**
+	 * Sanitize textarea label markup allowing only inline format tags.
+	 *
+	 * @since    1.0.0
+	 * @param    string $raw_label Raw label value.
+	 * @return   string
+	 */
+	private function sanitize_textarea_label_markup( $raw_label ) {
+		$allowed_tags = array(
+			'strong' => array(),
+			'b' => array(),
+			'em' => array(),
+			'i' => array(),
+			'u' => array(),
+			'br' => array(),
+		);
+
+		$label = wp_kses_no_null( (string) $raw_label );
+		$label = wp_kses( $label, $allowed_tags );
+		$label = trim( $label );
+
+		if ( '' === $label ) {
+			return '';
+		}
+
+		if ( strlen( $label ) > 1200 ) {
+			$label = substr( $label, 0, 1200 );
+		}
+
+		return $label;
+	}
+
+	/**
+	 * Sanitize field description markup allowing only inline format tags.
+	 *
+	 * @since    1.0.0
+	 * @param    string $raw_description Raw description value.
+	 * @return   string
+	 */
+	private function sanitize_field_description_markup( $raw_description ) {
+		$allowed_tags = array(
+			'strong' => array(),
+			'b' => array(),
+			'em' => array(),
+			'i' => array(),
+			'u' => array(),
+			'br' => array(),
+		);
+
+		$description = wp_kses_no_null( (string) $raw_description );
+		$description = str_replace( array( "\r\n", "\r" ), "\n", $description );
+		$description = wp_kses( $description, $allowed_tags );
+		$description = trim( $description );
+
+		if ( '' === $description ) {
+			return '';
+		}
+
+		$description = nl2br( $description, false );
+
+		return wp_kses( $description, $allowed_tags );
+	}
+
+	/**
 	 * Resolve whether a field is required.
 	 *
 	 * @since    1.0.0
@@ -786,6 +955,10 @@ class Bform_Public {
 	private function is_field_required( $field ) {
 		if ( ! is_array( $field ) ) {
 			return true;
+		}
+
+		if ( $this->is_textarea_display_only( $field ) ) {
+			return false;
 		}
 
 		if ( ! array_key_exists( 'required', $field ) ) {

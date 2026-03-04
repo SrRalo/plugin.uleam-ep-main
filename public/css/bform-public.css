@@ -8,6 +8,8 @@
 	--uleam-primary-hover: #B71C1C;
 	--uleam-bg-light: #FFEBEE;
 	--uleam-text-main: #2D3748;
+	--uleam-text-muted: #718096;
+	--uleam-border: #E2E8F0;
 	--uleam-success: #00897B;
 	--uleam-font-main: 'Inter', sans-serif;
 	--uleam-font-data: 'Roboto Mono', monospace;
@@ -181,10 +183,25 @@
 	cursor: pointer;
 }
 
+.bform-runtime-choice--other {
+	margin-bottom: 6px;
+}
+
 .bform-runtime-choice input {
 	width: 20px;
 	height: 20px;
 	accent-color: var(--uleam-primary);
+}
+
+.bform-runtime-choice-other-input {
+	margin: -2px 0 12px 30px;
+	width: calc(100% - 30px);
+	max-width: none;
+}
+
+.bform-runtime-choice-other-input:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
 }
 
 .bform-runtime-link {
@@ -275,4 +292,104 @@
 	.bform-runtime-section h4 {
 		font-size: 20px;
 	}
+}
+
+/* --- ULEAM Branding Consistency Layer --- */
+.bform-unavailable-message,
+.bform-render-placeholder,
+.bform-success-message,
+.bform-runtime-form,
+.bform-runtime-section {
+	border-radius: 12px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.bform-runtime-form h3,
+.bform-runtime-section h4 {
+	font-weight: 700;
+}
+
+.bform-runtime-field input[type='text'],
+.bform-runtime-field input[type='email'],
+.bform-runtime-field input[type='number'],
+.bform-runtime-field input[type='date'],
+.bform-runtime-field input[type='file'],
+.bform-runtime-field textarea,
+.bform-runtime-field select {
+	padding: 12px;
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 12px;
+	background: #fff;
+	color: var(--uleam-text-main);
+	transition: all 0.2s ease;
+	min-height: 46px;
+}
+
+.bform-runtime-field textarea {
+	min-height: 96px;
+}
+
+.bform-runtime-field input[type='text']::placeholder,
+.bform-runtime-field input[type='number']::placeholder,
+.bform-runtime-field input[type='email']::placeholder,
+.bform-runtime-field textarea::placeholder {
+	color: var(--uleam-text-muted);
+	opacity: 1;
+}
+
+.bform-runtime-field input[type='text']:focus,
+.bform-runtime-field input[type='email']:focus,
+.bform-runtime-field input[type='number']:focus,
+.bform-runtime-field input[type='date']:focus,
+.bform-runtime-field input[type='file']:focus,
+.bform-runtime-field textarea:focus,
+.bform-runtime-field select:focus {
+	border-color: var(--uleam-primary);
+	box-shadow: 0 0 0 3px var(--uleam-bg-light);
+}
+
+.bform-runtime-actions button {
+	min-height: 46px;
+	padding: 0 20px;
+	border-radius: 12px;
+	border: 1.5px solid var(--uleam-border);
+	transition: all 0.2s ease;
+}
+
+.bform-runtime-back {
+	color: var(--uleam-text-main);
+	background: #f8fafc;
+	border-color: var(--uleam-border);
+}
+
+.bform-runtime-next,
+.bform-runtime-submit {
+	color: #fff;
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+}
+
+.bform-runtime-back:hover {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary-hover);
+}
+
+.bform-runtime-next:hover,
+.bform-runtime-submit:hover {
+	background: var(--uleam-primary-hover);
+	border-color: var(--uleam-primary-hover);
+	color: #fff;
+}
+
+.bform-runtime-field--textarea-display-only textarea.bform-runtime-textarea-display-only {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-border);
+	color: var(--uleam-text-muted);
+	cursor: not-allowed;
+}
+
+.bform-runtime-field--textarea-display-only textarea.bform-runtime-textarea-display-only:focus {
+	border-color: var(--uleam-border);
+	box-shadow: none;
 }

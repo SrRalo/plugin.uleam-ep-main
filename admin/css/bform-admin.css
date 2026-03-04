@@ -8,6 +8,7 @@
 	--uleam-primary-hover: #B71C1C;
 	--uleam-bg-light: #FFEBEE;
 	--uleam-text-main: #2D3748;
+	--uleam-text-muted: #718096;
 	--uleam-border: #E2E8F0;
 	--uleam-success: #00897B;
 	--uleam-font-main: 'Inter', sans-serif;
@@ -488,7 +489,7 @@
 }
 
 .bform-json-textarea {
-	font-family: Consolas, Monaco, monospace;
+	font-family: var(--uleam-font-data);
 	font-size: 12px;
 }
 
@@ -570,6 +571,350 @@
 	min-height: 34px;
 }
 
+.bform-templates-wrap {
+	position: relative;
+	padding-right: 16px;
+	padding-bottom: 110px;
+}
+
+.bform-template-library-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 18px;
+	margin-bottom: 14px;
+}
+
+.bform-template-library-title h1 {
+	font-size: 28px;
+	font-weight: 800;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	margin-bottom: 6px;
+}
+
+.bform-template-library-title p {
+	color: var(--uleam-text-muted);
+	font-size: 15px;
+}
+
+.bform-template-library-search {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	max-width: 540px;
+	margin-bottom: 20px;
+}
+
+.bform-template-library-search input[type='search'] {
+	flex: 1;
+	min-height: 44px;
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 12px;
+	padding: 0 16px;
+	font-size: 14px;
+	color: var(--uleam-text-main);
+	background: #fff;
+}
+
+.bform-template-library-search input[type='search']:focus {
+	border-color: var(--uleam-primary);
+	box-shadow: 0 0 0 3px var(--uleam-bg-light);
+	outline: none;
+}
+
+.bform-template-search-btn {
+	min-width: 44px !important;
+	width: 44px;
+	height: 44px;
+	padding: 0 !important;
+	border-radius: 12px !important;
+	display: inline-flex !important;
+	align-items: center;
+	justify-content: center;
+}
+
+.bform-template-search-btn .dashicons {
+	font-size: 17px;
+	width: 17px;
+	height: 17px;
+}
+
+.bform-template-library-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 20px;
+	align-items: stretch;
+}
+
+.bform-template-library-empty {
+	grid-column: 1 / -1;
+	background: #fff;
+	border: 1px dashed var(--uleam-border);
+	border-radius: 16px;
+	padding: 24px;
+}
+
+.bform-template-library-empty h2 {
+	font-size: 20px;
+	margin-bottom: 8px;
+}
+
+.bform-template-library-empty p {
+	color: var(--uleam-text-muted);
+	font-size: 14px;
+}
+
+.bform-template-library-card {
+	position: relative;
+	background: #fff;
+	border: 1px solid var(--uleam-border);
+	border-radius: 16px;
+	padding: 20px;
+	cursor: pointer;
+	transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, transform .2s ease;
+	display: flex;
+	flex-direction: column;
+	min-height: 240px;
+}
+
+.bform-template-library-card:hover {
+	border-color: var(--uleam-primary);
+	box-shadow: 0 10px 18px -8px rgba(15, 23, 42, 0.2);
+	transform: translateY(-2px);
+}
+
+.bform-template-library-card:focus-visible {
+	outline: none;
+	border-color: var(--uleam-primary);
+	box-shadow: 0 0 0 3px var(--uleam-bg-light);
+}
+
+.bform-template-library-card.is-selected {
+	border: 2px solid var(--uleam-primary);
+	background: var(--uleam-bg-light);
+}
+
+.bform-template-selection-check {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 2px solid var(--uleam-border);
+	background: #fff;
+	color: transparent;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	cursor: pointer;
+	transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+
+.bform-template-selection-check .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.bform-template-library-card.is-selected .bform-template-selection-check {
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+	color: #fff;
+}
+
+.bform-template-library-icon {
+	width: 46px;
+	height: 46px;
+	border-radius: 12px;
+	background: #f7fafc;
+	color: var(--uleam-primary);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 14px;
+}
+
+.bform-template-library-icon .dashicons {
+	font-size: 22px;
+	width: 22px;
+	height: 22px;
+}
+
+.bform-template-library-card.is-icon-style-a .bform-template-library-icon {
+	background: #fff5f5;
+}
+
+.bform-template-library-card.is-icon-style-b .bform-template-library-icon {
+	background: #f7fafc;
+}
+
+.bform-template-library-card.is-icon-style-c .bform-template-library-icon {
+	background: #eef2ff;
+}
+
+.bform-template-library-card-title {
+	font-size: 16px;
+	font-weight: 700;
+	margin-bottom: 8px;
+	line-height: 1.25;
+}
+
+.bform-template-library-card-desc {
+	font-size: 13px;
+	line-height: 1.42;
+	color: var(--uleam-text-muted);
+	margin-bottom: 18px;
+	min-height: 54px;
+}
+
+.bform-template-card-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	border-top: 1px solid var(--uleam-border);
+	padding-top: 12px;
+	margin-top: auto;
+}
+
+.bform-template-field-count {
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--uleam-success);
+	text-transform: uppercase;
+	letter-spacing: .02em;
+}
+
+.bform-template-action-icons {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.bform-template-card-action {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--uleam-text-muted);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	cursor: pointer;
+	transition: color .2s ease, background-color .2s ease;
+}
+
+.bform-template-card-action .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.bform-template-card-action:hover,
+.bform-template-card-action:focus-visible {
+	color: var(--uleam-primary);
+	background: #fff;
+	outline: none;
+}
+
+.bform-template-selection-bar {
+	position: fixed;
+	left: 50%;
+	bottom: 28px;
+	transform: translateX(-50%);
+	background: var(--uleam-text-main);
+	color: #fff;
+	border-radius: 999px;
+	padding: 12px 16px;
+	display: none;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	box-shadow: 0 18px 28px -14px rgba(15, 23, 42, 0.45);
+	min-width: 520px;
+	z-index: 9999;
+	animation: bformTemplateBarIn .2s ease-out;
+}
+
+.bform-template-selection-bar.is-visible {
+	display: flex;
+}
+
+.bform-template-hidden-form {
+	display: none;
+}
+
+.bform-template-selection-summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.bform-template-selection-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 26px;
+	height: 22px;
+	padding: 0 8px;
+	border-radius: 999px;
+	background: var(--uleam-primary);
+	font-size: 12px;
+	font-weight: 800;
+}
+
+.bform-template-selection-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.bform-template-selection-btn {
+	border-radius: 10px !important;
+	min-height: 38px !important;
+	padding: 0 14px !important;
+	font-size: 13px;
+	font-weight: 700;
+	border: 0 !important;
+	box-shadow: none !important;
+}
+
+.bform-template-selection-btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.bform-template-use-btn {
+	background: #fff !important;
+	color: var(--uleam-text-main) !important;
+	border: 1px solid var(--uleam-border) !important;
+}
+
+.bform-template-combine-btn {
+	background: var(--uleam-success) !important;
+	border-color: var(--uleam-success) !important;
+	color: #fff !important;
+}
+
+@keyframes bformTemplateBarIn {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateX(-50%) translateY(0);
+	}
+}
+
 @media (max-width: 1200px) {
 	.bform-metrics,
 	.bform-template-grid {
@@ -600,6 +945,42 @@
 
 	.bform-template-form-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.bform-template-library-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.bform-template-library-title h1 {
+		font-size: 25px;
+	}
+
+	.bform-template-library-title p {
+		font-size: 14px;
+	}
+
+	.bform-template-library-search {
+		max-width: none;
+	}
+
+	.bform-template-selection-bar {
+		left: 12px;
+		right: 12px;
+		bottom: 12px;
+		transform: none;
+		min-width: auto;
+		border-radius: 14px;
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.bform-template-selection-actions {
+		width: 100%;
+	}
+
+	.bform-template-selection-btn {
+		flex: 1;
 	}
 }
 
@@ -632,6 +1013,27 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.bform-constructor-template-btn {
+	display: inline-flex !important;
+	align-items: center;
+	gap: 6px;
+	min-height: 44px !important;
+	padding: 0 14px !important;
+	border-radius: 8px !important;
+	font-weight: 600;
+}
+
+.bform-constructor-template-btn-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.bform-constructor-template-btn-icon svg {
+	width: 16px;
+	height: 16px;
 }
 
 .bform-save-constructor--large {
@@ -684,11 +1086,22 @@
 .bform-builder-sidebar {
 	border-radius: 16px;
 	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+	max-height: calc(100vh - 140px);
 	-ms-overflow-style: none;
 	scrollbar-width: none;
 }
 
 .bform-builder-sidebar::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+}
+
+.bform-builder-props {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+.bform-builder-props::-webkit-scrollbar {
 	width: 0;
 	height: 0;
 }
@@ -1157,7 +1570,13 @@
 	padding: 0;
 	border-radius: 16px;
 	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+.bform-builder-props--uleam::-webkit-scrollbar {
+	width: 0;
+	height: 0;
 }
 
 .bform-builder-props--uleam > h2 {
@@ -1245,11 +1664,55 @@
 	accent-color: var(--uleam-primary);
 }
 
+.bform-builder-props--uleam .bform-prop-checkbox-label input[type='checkbox']:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.bform-admin-wrap .bform-builder-props--uleam .bform-prop-textarea-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 10px;
+}
+
+.bform-admin-wrap .bform-builder-props--uleam .bform-prop-textarea-toolbar .button.bform-prop-description-style-btn {
+	min-height: 40px;
+	width: 42px;
+	padding: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--uleam-text-main);
+}
+
+.bform-admin-wrap .bform-builder-props--uleam .bform-prop-textarea-toolbar .button.bform-prop-description-style-btn svg {
+	width: 17px;
+	height: 17px;
+	stroke: currentColor;
+}
+
+.bform-admin-wrap .bform-builder-props--uleam .bform-prop-textarea-toolbar .button.bform-prop-description-style-btn:hover,
+.bform-admin-wrap .bform-builder-props--uleam .bform-prop-textarea-toolbar .button.bform-prop-description-style-btn:focus {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary-hover);
+}
+
 .bform-builder-props--uleam .bform-prop-choice-options {
 	background: #fdfdfd;
 	border: 1px solid #e2e8f0;
 	border-radius: 12px;
 	padding: 16px;
+}
+
+.bform-builder-props--uleam .bform-choice-radio-other-toggle {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px dashed #e2e8f0;
 }
 
 .bform-builder-props--uleam .bform-choice-add-option {
@@ -1903,6 +2366,33 @@
 	color: var(--uleam-primary);
 }
 
+.bform-btn-export {
+	width: 36px;
+	height: 36px;
+	min-height: 36px;
+	padding: 0 !important;
+	border: 1px solid var(--uleam-border);
+	border-radius: 8px;
+	background: #fff;
+	color: var(--uleam-primary);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+}
+
+.bform-btn-export .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+.bform-btn-export:hover {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary-hover);
+}
+
 .bform-modal-overlay {
 	position: fixed;
 	inset: 0;
@@ -1955,6 +2445,324 @@
 	overflow: auto;
 	border: 1px solid var(--uleam-border);
 	border-radius: 8px;
+}
+
+.bform-export-modal-content {
+	width: min(1280px, 96vw);
+	max-height: 92vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.bform-export-modal-body {
+	min-height: 220px;
+	overflow: auto;
+	padding: 18px;
+	border-radius: 12px;
+	background: #f1f5f9;
+}
+
+.bform-export-layout {
+	max-width: 1200px;
+	margin: 0 auto;
+	display: grid;
+	grid-template-columns: 400px minmax(0, 1fr);
+	gap: 24px;
+	align-items: start;
+}
+
+.bform-export-config-panel {
+	background: #fff;
+	border: 1px solid var(--uleam-border);
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	height: 100%;
+}
+
+.bform-export-config-section {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.bform-export-section-title {
+	display: block;
+	margin-bottom: 2px;
+	font-size: 12px;
+	font-weight: 800;
+	color: var(--uleam-primary);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.bform-export-field-label {
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--uleam-text-main);
+}
+
+.bform-export-response-select {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 8px;
+	background: #fff;
+	font-size: 13px;
+	color: var(--uleam-text-main);
+	outline: none;
+	transition: all 0.2s ease;
+}
+
+.bform-export-response-select:focus {
+	border-color: var(--uleam-primary);
+	box-shadow: 0 0 0 3px var(--uleam-bg-light);
+}
+
+.bform-export-response-hint {
+	margin: -2px 0 0;
+	font-size: 11px;
+	color: var(--uleam-text-muted);
+}
+
+.bform-export-upload-btn {
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 8px;
+	padding: 10px;
+	background: #fff;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--uleam-text-main);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.bform-export-upload-btn:hover {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+}
+
+.bform-export-upload-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	color: var(--uleam-primary);
+}
+
+.bform-export-file-input {
+	display: none;
+}
+
+.bform-export-divider {
+	border: 0;
+	border-top: 1px solid var(--uleam-border);
+	width: 100%;
+	margin: 0;
+}
+
+.bform-export-question-picker {
+	max-height: 250px;
+	overflow-y: auto;
+	border: 1px solid var(--uleam-border);
+	border-radius: 8px;
+	padding: 10px;
+	background: #fff;
+}
+
+.bform-export-fields-empty {
+	margin: 0;
+	padding: 8px;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--uleam-text-muted);
+}
+
+.bform-export-checkbox-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px;
+	font-size: 13px;
+	color: var(--uleam-text-main);
+	cursor: pointer;
+}
+
+.bform-export-checkbox-item input[type='checkbox'] {
+	accent-color: var(--uleam-primary);
+}
+
+.bform-export-generate-btn {
+	width: 100%;
+	margin-top: 6px;
+	padding: 0 16px !important;
+	min-height: 50px !important;
+	border-radius: 12px !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	font-weight: 700 !important;
+}
+
+.bform-export-generate-btn .dashicons {
+	font-size: 17px;
+	width: 17px;
+	height: 17px;
+}
+
+.bform-export-preview-panel {
+	background: #cbd5e1;
+	border-radius: 16px;
+	padding: 32px;
+	display: flex;
+	justify-content: center;
+	overflow: auto;
+	max-height: 74vh;
+}
+
+.bform-export-pdf-page {
+	width: 595px;
+	min-height: 842px;
+	background: #fff;
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+	padding: 56px;
+	display: flex;
+	flex-direction: column;
+	box-sizing: border-box;
+	position: relative;
+}
+
+.bform-export-pdf-header-preview,
+.bform-export-pdf-footer-preview {
+	width: 100%;
+	border: 2px dashed #cbd5e1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--uleam-text-muted);
+	overflow: hidden;
+	background: #fff;
+}
+
+.bform-export-pdf-header-preview {
+	height: 80px;
+	margin-bottom: 30px;
+}
+
+.bform-export-pdf-footer-preview {
+	height: 60px;
+	margin-top: auto;
+}
+
+.bform-export-placeholder-text {
+	font-size: 12px;
+	color: var(--uleam-text-muted);
+}
+
+.bform-export-preview-img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+.bform-export-pdf-title-block {
+	margin-bottom: 20px;
+}
+
+.bform-export-pdf-title-block h4 {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 700;
+	border-bottom: 2px solid var(--uleam-primary);
+	padding-bottom: 5px;
+}
+
+.bform-export-pdf-title-block p {
+	margin: 8px 0 0;
+	font-size: 11px;
+	color: var(--uleam-text-muted);
+	font-family: var(--uleam-font-data);
+}
+
+.bform-export-pdf-body {
+	width: 100%;
+}
+
+.bform-export-preview-empty {
+	margin: 0;
+	padding: 12px;
+	border: 1px dashed var(--uleam-border);
+	border-radius: 8px;
+	background: #f8fafc;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--uleam-text-muted);
+}
+
+.bform-export-entry-row {
+	margin-bottom: 15px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.bform-export-entry-row--is-hidden {
+	display: none;
+}
+
+.bform-export-entry-question {
+	font-size: 13px;
+	font-weight: 700;
+	color: #1a202c;
+}
+
+.bform-export-entry-answer {
+	margin-top: 4px;
+	font-size: 13px;
+	color: #4a5568;
+}
+
+@media (max-width: 1280px) {
+	.bform-export-layout {
+		grid-template-columns: 1fr;
+		gap: 18px;
+	}
+
+	.bform-export-preview-panel {
+		padding: 20px;
+		max-height: none;
+	}
+}
+
+@media (max-width: 782px) {
+	.bform-export-modal-body {
+		padding: 12px;
+	}
+
+	.bform-export-config-panel {
+		padding: 16px;
+	}
+
+	.bform-export-pdf-page {
+		width: min(595px, 100%);
+		min-height: auto;
+		padding: 24px;
+	}
+
+	.bform-export-pdf-header-preview {
+		height: 64px;
+		margin-bottom: 20px;
+	}
+
+	.bform-export-pdf-footer-preview {
+		height: 54px;
+	}
 }
 
 .bform-excel-table th {
@@ -2103,4 +2911,428 @@ body.bform-modal-open {
 		flex-direction: column;
 		align-items: flex-start;
 	}
+}
+
+/* --- ULEAM Branding Consistency Layer --- */
+.bform-admin-wrap {
+	font-family: var(--uleam-font-main);
+}
+
+.bform-admin-wrap h1,
+.bform-admin-wrap h2,
+.bform-admin-wrap h3,
+.bform-admin-wrap h4,
+.bform-admin-wrap h5,
+.bform-admin-wrap h6 {
+	font-weight: 700;
+}
+
+.bform-table th,
+.bform-logic-table th,
+.bform-analytics-summary-table th,
+.bform-excel-table th,
+.bform-builder-sidebar h2,
+.bform-builder-props h2,
+.bform-analytics-selector label {
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	font-weight: 700;
+}
+
+.bform-admin-wrap code,
+.bform-admin-wrap pre,
+.bform-admin-wrap .code,
+.bform-json-textarea,
+.bform-row-number,
+.bform-value {
+	font-family: var(--uleam-font-data);
+}
+
+.bform-admin-toast,
+.bform-panel,
+.bform-library,
+.bform-metric-card,
+.bform-flow-card,
+.bform-logic-table-card,
+.bform-modal-content,
+.bform-analytics-panel {
+	border-radius: 12px;
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.bform-admin-toast {
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.bform-form-name-input,
+.bform-header-actions input[type='search'],
+.bform-analytics-actions input[type='search'],
+.bform-analytics-panel .bform-panel-header input[type='search'],
+.bform-logic-field input[type='text'],
+.bform-builder-props--uleam .bform-prop-item input,
+.bform-builder-props--uleam .bform-prop-item select,
+.bform-builder-props--uleam .bform-prop-item textarea,
+.bform-analytics-selector select {
+	padding: 12px 16px;
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 12px;
+	font-size: 14px;
+	font-family: var(--uleam-font-main);
+	color: var(--uleam-text-main);
+	background: #fff;
+	transition: all 0.2s ease;
+	outline: none;
+}
+
+.bform-form-name-input,
+.bform-header-actions input[type='search'],
+.bform-analytics-actions input[type='search'],
+.bform-analytics-panel .bform-panel-header input[type='search'],
+.bform-logic-field input[type='text'],
+.bform-builder-props--uleam .bform-prop-item input,
+.bform-builder-props--uleam .bform-prop-item select,
+.bform-analytics-selector select,
+.bform-admin-wrap .button {
+	min-height: 46px;
+}
+
+.bform-form-name-input:focus,
+.bform-header-actions input[type='search']:focus,
+.bform-analytics-actions input[type='search']:focus,
+.bform-analytics-panel .bform-panel-header input[type='search']:focus,
+.bform-logic-field input[type='text']:focus,
+.bform-builder-props--uleam .bform-prop-item input:focus,
+.bform-builder-props--uleam .bform-prop-item select:focus,
+.bform-builder-props--uleam .bform-prop-item textarea:focus,
+.bform-analytics-selector select:focus {
+	border-color: var(--uleam-primary);
+	box-shadow: 0 0 0 3px var(--uleam-bg-light);
+}
+
+.bform-admin-wrap .button.button-primary,
+.bform-admin-wrap .button.bform-cta {
+	border: 1.5px solid var(--uleam-primary);
+	border-radius: 12px;
+	padding: 0 20px !important;
+	background: var(--uleam-primary);
+	color: #fff;
+	transition: all 0.2s ease;
+}
+
+.bform-admin-wrap .button.button-primary:hover,
+.bform-admin-wrap .button.bform-cta:hover {
+	background: var(--uleam-primary-hover);
+	border-color: var(--uleam-primary-hover);
+}
+
+.bform-admin-wrap .button:not(.button-primary):not(.bform-cta) {
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 12px;
+	background: #f8fafc;
+	color: var(--uleam-text-main);
+	padding: 0 16px;
+	transition: all 0.2s ease;
+}
+
+.bform-admin-wrap .button:not(.button-primary):not(.bform-cta):hover {
+	background: var(--uleam-bg-light);
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary-hover);
+}
+
+.bform-table,
+.bform-logic-table,
+.bform-analytics-summary-table,
+.bform-excel-table {
+	width: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid var(--uleam-border);
+	border-radius: 12px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.bform-table th,
+.bform-logic-table th,
+.bform-analytics-summary-table th,
+.bform-excel-table th {
+	background: #f8fafc;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--uleam-text-muted);
+	padding: 12px;
+	border-bottom: 1px solid var(--uleam-border);
+}
+
+.bform-table td,
+.bform-logic-table td,
+.bform-analytics-summary-table td,
+.bform-excel-table td {
+	padding: 12px;
+	border-bottom: 1px solid var(--uleam-border);
+}
+
+.bform-table tbody tr,
+.bform-logic-table tbody tr,
+.bform-analytics-summary-table tbody tr,
+.bform-excel-table tbody tr {
+	transition: background-color 0.2s ease;
+}
+
+.bform-table tbody tr:hover,
+.bform-logic-table tbody tr:hover,
+.bform-analytics-summary-table tbody tr:hover,
+.bform-excel-table tbody tr:hover {
+	background: var(--uleam-bg-light);
+}
+
+.bform-panel--principal-list {
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	padding: 0;
+}
+
+.bform-panel--principal-list .bform-table-header {
+	margin-bottom: 24px;
+}
+
+.bform-panel--principal-list .bform-table-header h2 {
+	font-size: 24px;
+	font-weight: 700;
+}
+
+.bform-panel--principal-list .button.bform-btn-primary-uleam {
+	min-height: 40px;
+	border-radius: 10px;
+	padding: 0 20px !important;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.bform-panel--principal-list .bform-table-card {
+	background: #fff;
+	border-radius: 16px;
+	border: 1px solid var(--uleam-border);
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.bform-panel--principal-list .bform-principal-table {
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	overflow: visible;
+	table-layout: auto;
+	width: max-content;
+	min-width: 100%;
+}
+
+.bform-panel--principal-list .bform-principal-table th {
+	background-color: #f8fafc;
+	padding: 16px 20px;
+	text-align: center;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--uleam-text-muted);
+	border-bottom: 1px solid var(--uleam-border);
+	white-space: nowrap;
+}
+
+.bform-panel--principal-list .bform-principal-table td {
+	padding: 16px 20px;
+	border-bottom: 1px solid #f1f5f9;
+	font-size: 14px;
+	transition: background 0.2s ease;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.bform-panel--principal-list .bform-principal-table th:nth-child(2),
+.bform-panel--principal-list .bform-principal-table td:nth-child(2) {
+	white-space: normal;
+	width: auto;
+}
+
+.bform-panel--principal-list .bform-principal-table tbody tr:hover td {
+	background-color: #fdfdfd;
+}
+
+.bform-panel--principal-list .bform-principal-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.bform-panel--principal-list .bform-col-actions {
+	text-align: center;
+}
+
+.bform-panel--principal-list .bform-empty-row {
+	text-align: center;
+	color: var(--uleam-text-muted);
+}
+
+.bform-panel--principal-list .bform-code-id {
+	font-family: var(--uleam-font-data);
+	font-weight: 600;
+	color: var(--uleam-primary);
+}
+
+.bform-panel--principal-list .bform-form-name {
+	display: block;
+	font-weight: 600;
+}
+
+.bform-panel--principal-list .button.bform-copy-shortcode.bform-btn-copy {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	min-height: auto;
+	padding: 0 !important;
+	border: 0 !important;
+	background: transparent !important;
+	box-shadow: none;
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1.3;
+	color: var(--wp-admin-theme-color);
+	text-decoration: none;
+}
+
+.bform-panel--principal-list .button.bform-copy-shortcode.bform-btn-copy:hover {
+	text-decoration: underline;
+	color: var(--wp-admin-theme-color-darker-10);
+}
+
+.bform-panel--principal-list .button.bform-copy-shortcode.bform-btn-copy .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.bform-panel--principal-list .button.bform-copy-shortcode.bform-btn-copy.is-copied {
+	color: var(--uleam-success);
+}
+
+.bform-panel--principal-list .bform-date-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 8px;
+	border-radius: 6px;
+	font-size: 12px;
+	color: var(--uleam-text-main);
+	background: #edf2f7;
+	white-space: nowrap;
+}
+
+.bform-panel--principal-list .bform-switch {
+	width: 40px;
+	height: 22px;
+}
+
+.bform-panel--principal-list .bform-slider:before {
+	height: 16px;
+	width: 16px;
+	left: 3px;
+	top: 3px;
+}
+
+.bform-panel--principal-list .bform-switch input:checked + .bform-slider {
+	background-color: var(--uleam-success);
+}
+
+.bform-panel--principal-list .bform-switch input:checked + .bform-slider:before {
+	transform: translateX(18px);
+}
+
+.bform-panel--principal-list .bform-row-actions {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 6px;
+	justify-content: flex-end;
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.bform-panel--principal-list .bform-row-actions .button.bform-btn-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	min-height: 32px;
+	padding: 6px 12px;
+	border-radius: 8px;
+	border: 1px solid var(--uleam-border);
+	background: #fff;
+	color: var(--uleam-text-main);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.2;
+	text-decoration: none;
+}
+
+.bform-panel--principal-list .bform-row-actions .button.bform-btn-action:hover {
+	background: #f8fafc;
+	border-color: var(--uleam-border);
+	color: var(--uleam-text-main);
+}
+
+.bform-panel--principal-list .bform-row-actions .button.bform-btn-edit {
+	border-color: var(--wp-admin-theme-color);
+	color: var(--wp-admin-theme-color);
+	background: #f8fafc;
+}
+
+.bform-panel--principal-list .bform-row-actions .button.bform-btn-edit:hover {
+	background: var(--wp-admin-theme-color);
+	border-color: var(--wp-admin-theme-color);
+	color: #fff;
+}
+
+.bform-panel--principal-list .bform-row-actions .button.bform-btn-delete {
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary);
+	background: #fff;
+}
+
+.bform-panel--principal-list .bform-row-actions .button.bform-btn-delete:hover {
+	background: var(--uleam-primary);
+	border-color: var(--uleam-primary);
+	color: #fff;
+}
+
+.bform-analytics-panel {
+	overflow-x: auto;
+	overflow-y: visible;
+}
+
+.bform-analytics-panel .bform-analytics-summary-table {
+	table-layout: auto;
+	width: max-content;
+	min-width: 100%;
+}
+
+.bform-analytics-panel .bform-analytics-summary-table th {
+	text-align: center;
+	white-space: nowrap;
+}
+
+.bform-analytics-panel .bform-analytics-summary-table td {
+	white-space: nowrap;
+}
+
+.bform-analytics-panel .bform-analytics-summary-table .bform-analytics-col-action,
+.bform-analytics-panel .bform-analytics-summary-table .bform-analytics-cell-action {
+	text-align: center;
+}
+
+.bform-analytics-panel .bform-btn-view,
+.bform-analytics-panel .bform-btn-export {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	white-space: nowrap;
 }

@@ -159,6 +159,7 @@ class Bform {
 		$this->loader->add_action( 'wp_ajax_bform_save_form_schema', $plugin_admin, 'ajax_save_form_schema' );
 		$this->loader->add_action( 'wp_ajax_bform_save_logic_schema', $plugin_admin, 'ajax_save_logic_schema' );
 		$this->loader->add_action( 'wp_ajax_bform_get_analytics_form_responses', $plugin_admin, 'ajax_get_analytics_form_responses' );
+		$this->loader->add_action( 'wp_ajax_bform_get_analytics_export_response_fields', $plugin_admin, 'ajax_get_analytics_export_response_fields' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
 

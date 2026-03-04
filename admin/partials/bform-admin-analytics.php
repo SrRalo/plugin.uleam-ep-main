@@ -14,6 +14,7 @@
 	<nav class="bform-view-nav" aria-label="<?php esc_attr_e( 'Navegación de vistas', 'bform' ); ?>">
 		<a href="<?php echo esc_url( $principal_page_url ); ?>"><?php esc_html_e( 'Principal', 'bform' ); ?></a>
 		<a href="<?php echo esc_url( $constructor_page_url ); ?>"><?php esc_html_e( 'Constructor', 'bform' ); ?></a>
+		<a href="<?php echo esc_url( $templates_page_url ); ?>"><?php esc_html_e( 'Plantillas', 'bform' ); ?></a>
 		<a class="is-active" href="<?php echo esc_url( $analytics_page_url ); ?>"><?php esc_html_e( 'Analíticas', 'bform' ); ?></a>
 	</nav>
 
@@ -101,17 +102,21 @@
 					<th><?php esc_html_e( 'Nombre de Tabla / Formulario', 'bform' ); ?></th>
 					<th><?php esc_html_e( 'Fecha creación', 'bform' ); ?></th>
 					<th><?php esc_html_e( 'Total Respuestas', 'bform' ); ?></th>
-					<th><?php esc_html_e( 'Visualización Rápida', 'bform' ); ?></th>
+					<th class="bform-analytics-col-action"><?php esc_html_e( 'Visualización Rápida', 'bform' ); ?></th>
+					<th class="bform-analytics-col-action"><?php esc_html_e( 'Exportacion', 'bform' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
 				<?php if ( empty( $analytics_rows ) ) : ?>
 					<tr>
-						<td colspan="5"><?php esc_html_e( 'No hay formularios con respuestas para los filtros seleccionados.', 'bform' ); ?></td>
+						<td colspan="6"><?php esc_html_e( 'No hay formularios con respuestas para los filtros seleccionados.', 'bform' ); ?></td>
 					</tr>
 				<?php else : ?>
 					<?php foreach ( $analytics_rows as $analytics_index => $analytics_row ) : ?>
 						<?php $display_row_number = ( ( $analytics_page_number - 1 ) * $analytics_per_page ) + ( $analytics_index + 1 ); ?>
+						<?php $analytics_row_form_id = isset( $analytics_row['form_id'] ) ? absint( $analytics_row['form_id'] ) : 0; ?>
+						<?php $analytics_response_ids_for_form = isset( $analytics_response_ids_by_form[ $analytics_row_form_id ] ) && is_array( $analytics_response_ids_by_form[ $analytics_row_form_id ] ) ? $analytics_response_ids_by_form[ $analytics_row_form_id ] : array(); ?>
+						<?php $analytics_response_ids_attr = implode( ',', array_map( 'absint', $analytics_response_ids_for_form ) ); ?>
 						<tr>
 							<td>
 								<span class="bform-row-number">#<?php echo esc_html( str_pad( (string) $display_row_number, 3, '0', STR_PAD_LEFT ) ); ?></span>
@@ -127,14 +132,27 @@
 								?>
 							</td>
 							<td><span class="bform-badge-responses"><?php echo esc_html( number_format_i18n( (int) $analytics_row['total_responses'] ) ); ?></span></td>
-							<td>
+							<td class="bform-analytics-cell-action">
 								<button
 									type="button"
 									class="button bform-btn-view bform-open-analytics-modal"
-									data-form-id="<?php echo esc_attr( (string) $analytics_row['form_id'] ); ?>"
+									data-form-id="<?php echo esc_attr( (string) $analytics_row_form_id ); ?>"
 									data-form-name="<?php echo esc_attr( $analytics_row['form_name'] ); ?>"
 								>
 									<?php esc_html_e( 'Ver Datos', 'bform' ); ?>
+								</button>
+							</td>
+							<td class="bform-analytics-cell-action">
+								<button
+									type="button"
+									class="button bform-btn-export bform-open-export-modal"
+									data-form-id="<?php echo esc_attr( (string) $analytics_row_form_id ); ?>"
+									data-form-name="<?php echo esc_attr( $analytics_row['form_name'] ); ?>"
+									data-response-ids="<?php echo esc_attr( $analytics_response_ids_attr ); ?>"
+									aria-label="<?php esc_attr_e( 'Abrir exportación PDF', 'bform' ); ?>"
+								>
+									<span class="dashicons dashicons-media-document" aria-hidden="true"></span>
+									<span class="screen-reader-text"><?php esc_html_e( 'Abrir exportación PDF', 'bform' ); ?></span>
 								</button>
 							</td>
 						</tr>
@@ -190,6 +208,83 @@
 							</tr>
 						</tbody>
 					</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="bform-modal-overlay" id="bformExportModal" data-export-base-url="<?php echo esc_url( $analytics_export_pdf_base_url ); ?>" hidden>
+			<div class="bform-modal-content bform-export-modal-content" role="dialog" aria-modal="true" aria-labelledby="bformExportModalTitle">
+				<div class="bform-excel-header">
+					<h3 id="bformExportModalTitle"><?php esc_html_e( 'Exportación PDF', 'bform' ); ?></h3>
+					<button type="button" class="button button-primary bform-close-export-modal"><?php esc_html_e( 'Cerrar', 'bform' ); ?></button>
+				</div>
+
+				<div class="bform-export-modal-body">
+					<div class="bform-export-layout">
+						<aside class="bform-export-config-panel" aria-label="<?php esc_attr_e( 'Configuración de exportación PDF', 'bform' ); ?>">
+							<section class="bform-export-config-section">
+								<span class="bform-export-section-title"><?php esc_html_e( '1. Personalización Visual', 'bform' ); ?></span>
+
+								<label class="bform-export-field-label" for="bformExportHeaderUpload"><?php esc_html_e( 'Imagen Encabezado', 'bform' ); ?></label>
+								<label class="bform-export-upload-btn" for="bformExportHeaderUpload">
+									<span class="dashicons dashicons-format-image" aria-hidden="true"></span>
+									<span><?php esc_html_e( 'Cargar Logo/Header', 'bform' ); ?></span>
+								</label>
+								<input type="file" id="bformExportHeaderUpload" class="bform-export-file-input" />
+
+								<label class="bform-export-field-label" for="bformExportFooterUpload"><?php esc_html_e( 'Imagen Pie de Página', 'bform' ); ?></label>
+								<label class="bform-export-upload-btn" for="bformExportFooterUpload">
+									<span class="dashicons dashicons-format-image" aria-hidden="true"></span>
+									<span><?php esc_html_e( 'Cargar Footer', 'bform' ); ?></span>
+								</label>
+								<input type="file" id="bformExportFooterUpload" class="bform-export-file-input" />
+							</section>
+
+							<hr class="bform-export-divider" />
+
+							<section class="bform-export-config-section">
+								<span class="bform-export-section-title"><?php esc_html_e( '2. Selección de Datos', 'bform' ); ?></span>
+								<label class="bform-export-field-label" for="bformExportResponseSelect"><?php esc_html_e( 'ID de Respuesta', 'bform' ); ?></label>
+								<select id="bformExportResponseSelect" class="bform-export-response-select">
+									<option value="0"><?php esc_html_e( 'Selecciona un ID de respuesta', 'bform' ); ?></option>
+								</select>
+								<p class="bform-export-response-hint"><?php esc_html_e( 'IDs de usuarios que han respondido al formulario seleccionado.', 'bform' ); ?></p>
+								<label class="bform-export-field-label"><?php esc_html_e( 'Campos a incluir', 'bform' ); ?></label>
+
+								<div class="bform-export-question-picker" id="bformExportFieldsPicker" role="group" aria-label="<?php esc_attr_e( 'Campos a incluir en PDF', 'bform' ); ?>">
+									<p class="bform-export-fields-empty"><?php esc_html_e( 'Selecciona un ID de respuesta para cargar los campos respondidos.', 'bform' ); ?></p>
+								</div>
+							</section>
+
+							<button type="button" class="button button-primary bform-export-generate-btn">
+								<span class="dashicons dashicons-media-document" aria-hidden="true"></span>
+								<span><?php esc_html_e( 'Generar PDF Final', 'bform' ); ?></span>
+							</button>
+						</aside>
+
+						<div class="bform-export-preview-panel" aria-label="<?php esc_attr_e( 'Previsualizador de PDF', 'bform' ); ?>">
+							<div class="bform-export-pdf-page">
+								<div class="bform-export-pdf-header-preview">
+									<span class="bform-export-placeholder-text"><?php esc_html_e( 'Encabezado (800x150px sugerido)', 'bform' ); ?></span>
+									<img src="" alt="<?php esc_attr_e( 'Vista previa de encabezado', 'bform' ); ?>" class="bform-export-preview-img" hidden />
+								</div>
+
+								<div class="bform-export-pdf-title-block">
+									<h4><?php esc_html_e( 'Reporte de Respuesta', 'bform' ); ?></h4>
+									<p><?php esc_html_e( 'ID de respuesta:', 'bform' ); ?> <span class="bform-export-current-response-id">—</span></p>
+								</div>
+
+								<div class="bform-export-pdf-body bform-export-preview-body" id="bformExportPreviewBody">
+									<p class="bform-export-preview-empty"><?php esc_html_e( 'Selecciona un ID de respuesta para previsualizar los campos.', 'bform' ); ?></p>
+								</div>
+
+								<div class="bform-export-pdf-footer-preview">
+									<span class="bform-export-placeholder-text"><?php esc_html_e( 'Pie de Página', 'bform' ); ?></span>
+									<img src="" alt="<?php esc_attr_e( 'Vista previa de pie de página', 'bform' ); ?>" class="bform-export-preview-img" hidden />
+								</div>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

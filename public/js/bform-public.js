@@ -82,7 +82,27 @@
 	}
 
 	function clearSectionValidity($section) {
-		$section.find('[data-field-id]').each(function() {
+		$section.find('[data-field-id], [data-other-for-field-id]').each(function() {
+			if (typeof this.setCustomValidity === 'function') {
+				this.setCustomValidity('');
+			}
+		});
+	}
+
+	function syncRadioOtherInputs($scope) {
+		var $root = ($scope && $scope.length) ? $scope : $(document);
+		$root.find('[data-other-for-field-id]').each(function() {
+			var $otherInput = $(this);
+			var fieldId = ($otherInput.attr('data-other-for-field-id') || '').toString();
+			if (!fieldId) {
+				return;
+			}
+
+			var $form = $otherInput.closest('form');
+			var $checkedRadio = $form.find('input[type="radio"][data-field-id="' + fieldId + '"]:checked').first();
+			var enableInput = $checkedRadio.length && ($checkedRadio.attr('data-other-radio') || '0') === '1';
+
+			$otherInput.prop('disabled', !enableInput);
 			if (typeof this.setCustomValidity === 'function') {
 				this.setCustomValidity('');
 			}
@@ -130,8 +150,20 @@
 			var tagName = (firstInput.tagName || '').toLowerCase();
 			var inputType = ((firstInput.type || '').toLowerCase());
 			var isValid = true;
+			var invalidElement = firstInput;
 
-			if (inputType === 'radio' || inputType === 'checkbox') {
+			if (inputType === 'radio') {
+				var $checkedRadio = $fieldInputs.filter(':checked').first();
+				isValid = $checkedRadio.length > 0;
+
+				if (isValid && ($checkedRadio.attr('data-other-radio') || '0') === '1') {
+					var $otherInput = $section.find('[data-other-for-field-id="' + targetFieldId + '"]').first();
+					isValid = $otherInput.length > 0 && hasValue($otherInput.val());
+					if (!isValid && $otherInput.length) {
+						invalidElement = $otherInput.get(0);
+					}
+				}
+			} else if (inputType === 'checkbox') {
 				isValid = $fieldInputs.filter(':checked').length > 0;
 			} else if (inputType === 'file') {
 				isValid = !!(firstInput.files && firstInput.files.length);
@@ -151,12 +183,16 @@
 					}
 				});
 
-				if (typeof firstInput.reportValidity === 'function') {
-					firstInput.reportValidity();
+				if (invalidElement && typeof invalidElement.setCustomValidity === 'function') {
+					invalidElement.setCustomValidity(requiredMessage);
 				}
 
-				if (typeof firstInput.focus === 'function') {
-					firstInput.focus();
+				if (invalidElement && typeof invalidElement.reportValidity === 'function') {
+					invalidElement.reportValidity();
+				}
+
+				if (invalidElement && typeof invalidElement.focus === 'function') {
+					invalidElement.focus();
 				}
 
 				return false;
@@ -172,8 +208,18 @@
 			return false;
 		}
 
+		var hasInteractiveFields = false;
+
 		for (var index = 0; index < section.fields.length; index++) {
 			var field = section.fields[index] || {};
+			var fieldType = (field.type || '').toString().toLowerCase();
+			var settings = field.settings && typeof field.settings === 'object' ? field.settings : {};
+			var isDisplayOnlyTextarea = fieldType === 'textarea' && !!settings.display_only;
+			if (isDisplayOnlyTextarea) {
+				continue;
+			}
+
+			hasInteractiveFields = true;
 			if (!field.id) {
 				continue;
 			}
@@ -182,7 +228,7 @@
 			}
 		}
 
-		return false;
+		return !hasInteractiveFields;
 	}
 
 	function getRulesFromSection(schema, sectionId) {
@@ -301,7 +347,13 @@
 
 			if ($field.is(':radio')) {
 				if ($field.is(':checked')) {
-					state[fieldId] = $field.val() || '';
+					if (($field.attr('data-other-radio') || '0') === '1') {
+						var $formScope = $field.closest('form');
+						var $otherInput = $formScope.find('[data-other-for-field-id="' + fieldId + '"]').first();
+						state[fieldId] = $otherInput.length ? ($otherInput.val() || '') : '';
+					} else {
+						state[fieldId] = $field.val() || '';
+					}
 				}
 				return;
 			}
@@ -344,6 +396,8 @@
 				$section.hide();
 			}
 		});
+
+		syncRadioOtherInputs($form);
 	}
 
 	function updateActionButtons($form, schema) {
@@ -442,6 +496,15 @@
 					renderVisibility($form, schema);
 					updateActionButtons($form, schema);
 					return;
+				}
+
+				renderVisibility($form, schema);
+				updateActionButtons($form, schema);
+			});
+
+			$form.on('change input', '[data-other-for-field-id]', function() {
+				if (typeof this.setCustomValidity === 'function') {
+					this.setCustomValidity('');
 				}
 
 				renderVisibility($form, schema);

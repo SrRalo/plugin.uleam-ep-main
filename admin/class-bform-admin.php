@@ -68,6 +68,15 @@ class Bform_Admin {
 	private $constructor_hook_suffix;
 
 	/**
+	 * Hook suffix for templates admin page.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 * @var      string    $templates_hook_suffix    Hook suffix returned by add_submenu_page.
+	 */
+	private $templates_hook_suffix;
+
+	/**
 	 * Hook suffix for logic admin page.
 	 *
 	 * @since    1.0.0
@@ -99,6 +108,7 @@ class Bform_Admin {
 		$this->page_hook_suffix = '';
 		$this->principal_hook_suffix = '';
 		$this->constructor_hook_suffix = '';
+		$this->templates_hook_suffix = '';
 		$this->logic_hook_suffix = '';
 		$this->analytics_hook_suffix = '';
 
@@ -115,6 +125,7 @@ class Bform_Admin {
 		$menu_slug  = 'bform-menu-root';
 		$principal_slug = 'bform-principal';
 		$constructor_slug = 'bform-constructor';
+		$templates_slug = 'bform-plantillas';
 		$logic_slug = 'bform-logica';
 		$analytics_slug = 'bform-analiticas';
 
@@ -144,6 +155,15 @@ class Bform_Admin {
 			$capability,
 			$constructor_slug,
 			array( $this, 'display_constructor_page' )
+		);
+
+		$this->templates_hook_suffix = add_submenu_page(
+			$menu_slug,
+			__( 'Plantillas', 'bform' ),
+			__( 'Plantillas', 'bform' ),
+			$capability,
+			$templates_slug,
+			array( $this, 'display_templates_page' )
 		);
 
 		$this->logic_hook_suffix = add_submenu_page(
@@ -199,6 +219,7 @@ class Bform_Admin {
 
 		$principal_page_url   = admin_url( 'admin.php?page=bform-principal' );
 		$constructor_page_url = admin_url( 'admin.php?page=bform-constructor' );
+		$templates_page_url   = admin_url( 'admin.php?page=bform-plantillas' );
 		$logic_page_url       = admin_url( 'admin.php?page=bform-logica' );
 		$analytics_page_url   = admin_url( 'admin.php?page=bform-analiticas' );
 		require_once plugin_dir_path( __FILE__ ) . 'partials/bform-admin-display.php';
@@ -216,10 +237,23 @@ class Bform_Admin {
 
 		$constructor_form_id = isset( $_GET['form_id'] ) ? absint( $_GET['form_id'] ) : 0;
 		$constructor_draft_id = isset( $_GET['draft_id'] ) ? sanitize_key( (string) wp_unslash( $_GET['draft_id'] ) ) : '';
+		$constructor_template_id = isset( $_GET['template_id'] ) ? absint( $_GET['template_id'] ) : 0;
+
+		if ( $constructor_form_id > 0 ) {
+			$constructor_template_id = 0;
+		}
+
 		$constructor_form = $constructor_form_id > 0 ? $this->get_form_by_id( $constructor_form_id ) : null;
+		$constructor_template = $constructor_template_id > 0 ? $this->get_template_by_id( $constructor_template_id ) : null;
+
+		if ( $constructor_template_id > 0 && empty( $constructor_template ) ) {
+			$constructor_template_id = 0;
+		}
 
 		$default_schema = $this->get_default_constructor_schema();
 		$constructor_form_schema = $default_schema;
+		$constructor_form_name = '';
+		$constructor_template_category = __( 'Constructor', 'bform' );
 
 		if ( ! empty( $constructor_form['esquema_json'] ) ) {
 			$decoded_schema = json_decode( $constructor_form['esquema_json'], true );
@@ -228,13 +262,91 @@ class Bform_Admin {
 			}
 		}
 
-		$constructor_form_name = ! empty( $constructor_form['nombre'] ) ? $constructor_form['nombre'] : '';
+		if ( ! empty( $constructor_form['nombre'] ) ) {
+			$constructor_form_name = sanitize_text_field( (string) $constructor_form['nombre'] );
+		}
+
+		if ( empty( $constructor_form ) && ! empty( $constructor_template ) ) {
+			if ( ! empty( $constructor_template['esquema_json'] ) ) {
+				$decoded_template_schema = json_decode( (string) $constructor_template['esquema_json'], true );
+				if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded_template_schema ) ) {
+					$constructor_form_schema = $decoded_template_schema;
+				}
+			}
+
+			if ( ! empty( $constructor_template['nombre'] ) ) {
+				$constructor_form_name = sanitize_text_field( (string) $constructor_template['nombre'] );
+			}
+
+			if ( ! empty( $constructor_template['categoria'] ) ) {
+				$constructor_template_category = sanitize_text_field( (string) $constructor_template['categoria'] );
+			}
+		}
 
 		$principal_page_url   = admin_url( 'admin.php?page=bform-principal' );
 		$constructor_page_url = admin_url( 'admin.php?page=bform-constructor' );
+		$templates_page_url   = admin_url( 'admin.php?page=bform-plantillas' );
 		$logic_page_url       = admin_url( 'admin.php?page=bform-logica' );
 		$analytics_page_url   = admin_url( 'admin.php?page=bform-analiticas' );
 		require_once plugin_dir_path( __FILE__ ) . 'partials/bform-admin-constructor.php';
+	}
+
+	/**
+	 * Render plugin templates admin page.
+	 *
+	 * @since    1.0.0
+	 */
+	public function display_templates_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'No tienes permisos para acceder a esta página.', 'bform' ) );
+		}
+
+		$this->ensure_plugin_tables_schema();
+
+		$templates_search_term = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$templates_table_err = '';
+		$templates_items = array();
+
+		$templates_library = $this->get_principal_templates();
+		if ( is_wp_error( $templates_library ) ) {
+			$templates_table_err = $templates_library->get_error_message();
+			$templates_library = array();
+		}
+
+		foreach ( $templates_library as $template_row ) {
+			$template_name = isset( $template_row['nombre'] ) ? sanitize_text_field( (string) $template_row['nombre'] ) : __( 'Plantilla sin nombre', 'bform' );
+			$template_category = isset( $template_row['categoria'] ) ? sanitize_text_field( (string) $template_row['categoria'] ) : '';
+
+			if ( '' !== $templates_search_term ) {
+				$template_search_haystack = $template_name . ' ' . $template_category;
+				if ( false === stripos( $template_search_haystack, $templates_search_term ) ) {
+					continue;
+				}
+			}
+
+			$template_schema = array();
+			if ( ! empty( $template_row['esquema_json'] ) ) {
+				$decoded_schema = json_decode( (string) $template_row['esquema_json'], true );
+				if ( JSON_ERROR_NONE === json_last_error() && is_array( $decoded_schema ) ) {
+					$template_schema = $decoded_schema;
+				}
+			}
+
+			$templates_items[] = array(
+				'id' => isset( $template_row['id'] ) ? absint( $template_row['id'] ) : 0,
+				'nombre' => $template_name,
+				'categoria' => $template_category,
+				'descripcion' => $this->build_template_card_description( $template_schema, $template_category ),
+				'campos_total' => $this->count_template_schema_fields( $template_schema ),
+			);
+		}
+
+		$principal_page_url   = admin_url( 'admin.php?page=bform-principal' );
+		$constructor_page_url = admin_url( 'admin.php?page=bform-constructor' );
+		$templates_page_url   = admin_url( 'admin.php?page=bform-plantillas' );
+		$logic_page_url       = admin_url( 'admin.php?page=bform-logica' );
+		$analytics_page_url   = admin_url( 'admin.php?page=bform-analiticas' );
+		require_once plugin_dir_path( __FILE__ ) . 'partials/bform-admin-templates.php';
 	}
 
 	/**
@@ -400,20 +512,30 @@ class Bform_Admin {
 
 				$type = ! empty( $field['type'] ) ? sanitize_key( $field['type'] ) : 'text';
 				$settings = isset( $field['settings'] ) && is_array( $field['settings'] ) ? $field['settings'] : array();
+				$field_label = ! empty( $field['label'] ) ? (string) $field['label'] : __( 'Campo', 'bform' );
+				if ( 'textarea' === $type ) {
+					$field_label = $this->sanitize_textarea_label_markup( $field_label );
+					if ( '' === trim( wp_strip_all_tags( $field_label ) ) ) {
+						$field_label = __( 'Campo', 'bform' );
+					}
+				} else {
+					$field_label = sanitize_text_field( $field_label );
+				}
 
 				$sanitized_field = array(
 					'id' => ! empty( $field['id'] ) ? sanitize_key( (string) $field['id'] ) : 'field_' . ( $field_index + 1 ),
 					'type' => $type,
-					'label' => ! empty( $field['label'] ) ? sanitize_text_field( $field['label'] ) : __( 'Campo', 'bform' ),
+					'label' => $field_label,
 					'placeholder' => ! empty( $field['placeholder'] ) ? sanitize_text_field( $field['placeholder'] ) : '',
 					'required' => ! array_key_exists( 'required', $field ) ? true : ! empty( $field['required'] ),
 					'settings' => $settings,
 				);
 
 				$description_enabled = ! empty( $settings['description_enabled'] );
-				$description_text = isset( $settings['description_text'] ) ? sanitize_textarea_field( (string) $settings['description_text'] ) : '';
-				$description_text = trim( preg_replace( '/\s+/', ' ', (string) $description_text ) );
-				$description_text = substr( $description_text, 0, 280 );
+				$description_text = isset( $settings['description_text'] ) ? $this->sanitize_field_description_markup( (string) $settings['description_text'] ) : '';
+				if ( '' === trim( wp_strip_all_tags( $description_text ) ) ) {
+					$description_text = '';
+				}
 
 				if ( ! $description_enabled ) {
 					$description_text = '';
@@ -421,6 +543,14 @@ class Bform_Admin {
 
 				$sanitized_field['settings']['description_enabled'] = $description_enabled;
 				$sanitized_field['settings']['description_text'] = $description_text;
+
+				if ( 'textarea' === $type ) {
+					$display_only = ! empty( $settings['display_only'] );
+					$sanitized_field['settings']['display_only'] = $display_only;
+					if ( $display_only ) {
+						$sanitized_field['required'] = false;
+					}
+				}
 
 				if ( 'date' === $type ) {
 					$date_format = isset( $settings['date_format'] ) ? sanitize_text_field( $settings['date_format'] ) : '';
@@ -458,6 +588,12 @@ class Bform_Admin {
 					}
 
 					$sanitized_field['settings']['options'] = array_values( $options_sanitized );
+
+					if ( 'radio' === $type ) {
+						$sanitized_field['settings']['allow_other_option'] = ! empty( $settings['allow_other_option'] );
+					} else {
+						$sanitized_field['settings']['allow_other_option'] = false;
+					}
 				}
 
 				if ( 'canvas' === $type ) {
@@ -471,7 +607,7 @@ class Bform_Admin {
 
 					$stroke_color = isset( $settings['stroke_color'] ) ? sanitize_hex_color( $settings['stroke_color'] ) : '';
 					if ( empty( $stroke_color ) ) {
-						$stroke_color = '#1f2937';
+						$stroke_color = '#2d3748';
 					}
 
 					$sanitized_field['settings']['line_width'] = $line_width;
@@ -519,6 +655,67 @@ class Bform_Admin {
 		}
 
 		return $schema;
+	}
+
+	/**
+	 * Sanitize textarea label markup allowing only inline format tags.
+	 *
+	 * @since    1.0.0
+	 * @param    string $raw_label Raw field label.
+	 * @return   string
+	 */
+	private function sanitize_textarea_label_markup( $raw_label ) {
+		$allowed_tags = array(
+			'strong' => array(),
+			'b' => array(),
+			'em' => array(),
+			'i' => array(),
+			'u' => array(),
+			'br' => array(),
+		);
+
+		$label = wp_kses_no_null( (string) $raw_label );
+		$label = wp_kses( $label, $allowed_tags );
+		$label = trim( $label );
+
+		if ( '' === $label ) {
+			return '';
+		}
+
+		if ( strlen( $label ) > 1200 ) {
+			$label = substr( $label, 0, 1200 );
+		}
+
+		return $label;
+	}
+
+	/**
+	 * Sanitize field description markup allowing only inline format tags.
+	 *
+	 * @since    1.0.0
+	 * @param    string $raw_description Raw field description.
+	 * @return   string
+	 */
+	private function sanitize_field_description_markup( $raw_description ) {
+		$allowed_tags = array(
+			'strong' => array(),
+			'b' => array(),
+			'em' => array(),
+			'i' => array(),
+			'u' => array(),
+			'br' => array(),
+		);
+
+		$description = wp_kses_no_null( (string) $raw_description );
+		$description = str_replace( array( "\r\n", "\r" ), "\n", $description );
+		$description = wp_kses( $description, $allowed_tags );
+		$description = trim( $description );
+
+		if ( '' === $description ) {
+			return '';
+		}
+
+		return $description;
 	}
 
 	/**
@@ -607,6 +804,7 @@ class Bform_Admin {
 
 		$principal_page_url   = admin_url( 'admin.php?page=bform-principal' );
 		$constructor_page_url = admin_url( 'admin.php?page=bform-constructor' );
+		$templates_page_url   = admin_url( 'admin.php?page=bform-plantillas' );
 		$logic_page_url       = admin_url( 'admin.php?page=bform-logica' );
 		$analytics_page_url   = admin_url( 'admin.php?page=bform-analiticas' );
 		require_once plugin_dir_path( __FILE__ ) . 'partials/bform-admin-logic.php';
@@ -890,6 +1088,15 @@ class Bform_Admin {
 		$analytics_total_pages = $analytics_data['total_pages'];
 		$analytics_page_number = $analytics_data['current_page'];
 
+		$analytics_row_form_ids = array();
+		foreach ( $analytics_rows as $analytics_row_item ) {
+			$row_form_id = isset( $analytics_row_item['form_id'] ) ? absint( $analytics_row_item['form_id'] ) : 0;
+			if ( $row_form_id > 0 ) {
+				$analytics_row_form_ids[] = $row_form_id;
+			}
+		}
+		$analytics_response_ids_by_form = $this->get_analytics_response_ids_by_form( $analytics_row_form_ids );
+
 		$analytics_base_params = array(
 			'page' => 'bform-analiticas',
 		);
@@ -904,12 +1111,72 @@ class Bform_Admin {
 
 		$analytics_page_base_url = add_query_arg( $analytics_base_params, admin_url( 'admin.php' ) );
 		$analytics_export_url = add_query_arg( array_merge( $analytics_base_params, array( 'export_csv' => 1 ) ), admin_url( 'admin.php' ) );
+		$analytics_export_pdf_base_url = add_query_arg(
+			array(
+				'page' => 'bform-analiticas',
+				'export_pdf' => 1,
+			),
+			admin_url( 'admin.php' )
+		);
 
 		$principal_page_url   = admin_url( 'admin.php?page=bform-principal' );
 		$constructor_page_url = admin_url( 'admin.php?page=bform-constructor' );
+		$templates_page_url   = admin_url( 'admin.php?page=bform-plantillas' );
 		$logic_page_url       = admin_url( 'admin.php?page=bform-logica' );
 		$analytics_page_url   = admin_url( 'admin.php?page=bform-analiticas' );
 		require_once plugin_dir_path( __FILE__ ) . 'partials/bform-admin-analytics.php';
+	}
+
+	/**
+	 * Get response IDs grouped by form for analytics export selector.
+	 *
+	 * @since    1.0.0
+	 * @param    array $form_ids Form IDs.
+	 * @return   array
+	 */
+	private function get_analytics_response_ids_by_form( $form_ids ) {
+		global $wpdb;
+
+		$grouped = array();
+		if ( ! is_array( $form_ids ) || empty( $form_ids ) ) {
+			return $grouped;
+		}
+
+		$normalized_ids = array_values( array_unique( array_filter( array_map( 'absint', $form_ids ) ) ) );
+		if ( empty( $normalized_ids ) ) {
+			return $grouped;
+		}
+
+		$responses_table = $this->get_responses_table_name();
+		$responses_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $responses_table ) );
+		if ( $responses_exists !== $responses_table ) {
+			return $grouped;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $normalized_ids ), '%d' ) );
+		$sql = "SELECT form_id, id FROM {$responses_table} WHERE form_id IN ({$placeholders}) ORDER BY id DESC";
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $normalized_ids ), ARRAY_A );
+
+		if ( ! is_array( $rows ) ) {
+			return $grouped;
+		}
+
+		foreach ( $rows as $row ) {
+			$form_id = isset( $row['form_id'] ) ? absint( $row['form_id'] ) : 0;
+			$response_id = isset( $row['id'] ) ? absint( $row['id'] ) : 0;
+
+			if ( $form_id <= 0 || $response_id <= 0 ) {
+				continue;
+			}
+
+			if ( ! isset( $grouped[ $form_id ] ) ) {
+				$grouped[ $form_id ] = array();
+			}
+
+			$grouped[ $form_id ][] = $response_id;
+		}
+
+		return $grouped;
 	}
 
 	/**
@@ -1210,6 +1477,84 @@ class Bform_Admin {
 	}
 
 	/**
+	 * AJAX: Fetch answered fields for one response to feed PDF export selector.
+	 *
+	 * @since    1.0.0
+	 */
+	public function ajax_get_analytics_export_response_fields() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permisos insuficientes.', 'bform' ) ), 403 );
+		}
+
+		check_ajax_referer( 'bform_analytics_modal', 'nonce' );
+
+		$form_id = isset( $_POST['form_id'] ) ? absint( $_POST['form_id'] ) : 0;
+		$response_id = isset( $_POST['response_id'] ) ? absint( $_POST['response_id'] ) : 0;
+
+		if ( $form_id <= 0 || $response_id <= 0 ) {
+			wp_send_json_error( array( 'message' => __( 'Parámetros inválidos.', 'bform' ) ), 400 );
+		}
+
+		$row = $this->get_analytics_pdf_source_row( $response_id, $form_id );
+		if ( empty( $row ) || ! is_array( $row ) ) {
+			wp_send_json_success(
+				array(
+					'form_id' => $form_id,
+					'response_id' => $response_id,
+					'fields' => array(),
+				)
+			);
+		}
+
+		$schema = json_decode( isset( $row['esquema_json'] ) ? (string) $row['esquema_json'] : '', true );
+		$datos_usuario = json_decode( isset( $row['datos_usuario'] ) ? (string) $row['datos_usuario'] : '', true );
+
+		if ( ! is_array( $schema ) ) {
+			$schema = array();
+		}
+
+		if ( ! is_array( $datos_usuario ) ) {
+			$datos_usuario = array();
+		}
+
+		$question_answers = $this->build_analytics_pdf_question_answers( $schema, $datos_usuario );
+		$fields = array();
+
+		foreach ( $question_answers as $entry ) {
+			if ( ! is_array( $entry ) ) {
+				continue;
+			}
+
+			$field_id = isset( $entry['field_id'] ) ? sanitize_key( (string) $entry['field_id'] ) : '';
+			$question = isset( $entry['question'] ) ? sanitize_text_field( (string) $entry['question'] ) : '';
+			$answer = isset( $entry['answer'] ) ? sanitize_textarea_field( (string) $entry['answer'] ) : '-';
+
+			if ( '' === $question || '-' === trim( $answer ) ) {
+				continue;
+			}
+
+			if ( '' === $field_id ) {
+				$field_id = 'campo_' . ( count( $fields ) + 1 );
+			}
+
+			$fields[] = array(
+				'field_id' => $field_id,
+				'question' => $question,
+				'answer' => $answer,
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'form_id' => $form_id,
+				'response_id' => $response_id,
+				'form_name' => isset( $row['form_name'] ) ? sanitize_text_field( (string) $row['form_name'] ) : __( 'Formulario', 'bform' ),
+				'fields' => $fields,
+			)
+		);
+	}
+
+	/**
 	 * Get analytics metrics.
 	 *
 	 * @since    1.0.0
@@ -1345,6 +1690,358 @@ class Bform_Admin {
 
 		fclose( $output );
 		exit;
+	}
+
+	/**
+	 * Export one analytics response as PDF via Dompdf.
+	 *
+	 * @since    1.0.0
+	 * @param    int $response_id Response ID filter.
+	 * @param    int $form_id Form ID filter.
+	 * @param    array $selected_field_ids Field IDs selected from export UI.
+	 */
+	private function export_analytics_pdf( $response_id, $form_id, $selected_field_ids = array() ) {
+		if ( ! $this->ensure_dompdf_available() ) {
+			wp_die( esc_html__( 'No se encontró Dompdf. Instala dependencias con Composer en el plugin.', 'bform' ), 500 );
+		}
+
+		$row = $this->get_analytics_pdf_source_row( $response_id, $form_id );
+		if ( empty( $row ) || ! is_array( $row ) ) {
+			wp_die( esc_html__( 'No se encontró una respuesta válida para exportar.', 'bform' ), 404 );
+		}
+
+		$schema = json_decode( isset( $row['esquema_json'] ) ? (string) $row['esquema_json'] : '', true );
+		$datos_usuario = json_decode( isset( $row['datos_usuario'] ) ? (string) $row['datos_usuario'] : '', true );
+
+		if ( ! is_array( $schema ) ) {
+			$schema = array();
+		}
+
+		if ( ! is_array( $datos_usuario ) ) {
+			$datos_usuario = array();
+		}
+
+		$question_answers = $this->build_analytics_pdf_question_answers( $schema, $datos_usuario );
+		$question_answers = $this->filter_analytics_pdf_question_answers( $question_answers, $selected_field_ids );
+		$html = $this->build_analytics_pdf_html( $row, $question_answers );
+
+		$dompdf = new \Dompdf\Dompdf(
+			array(
+				'isRemoteEnabled' => false,
+				'defaultFont' => 'DejaVu Sans',
+			)
+		);
+		$dompdf->loadHtml( $html, 'UTF-8' );
+		$dompdf->setPaper( 'A4', 'portrait' );
+		$dompdf->render();
+
+		$response_export_id = isset( $row['response_id'] ) ? absint( $row['response_id'] ) : 0;
+		$filename = 'uleam-respuesta-' . ( $response_export_id > 0 ? $response_export_id : 'pdf' ) . '-' . gmdate( 'Ymd-His' ) . '.pdf';
+
+		nocache_headers();
+		header( 'Content-Type: application/pdf' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+
+		echo $dompdf->output();
+		exit;
+	}
+
+	/**
+	 * Parse selected fields payload from request.
+	 *
+	 * @since    1.0.0
+	 * @param    string $raw_selected_fields Comma-separated field ids.
+	 * @return   array
+	 */
+	private function parse_analytics_selected_fields( $raw_selected_fields ) {
+		if ( ! is_string( $raw_selected_fields ) || '' === trim( $raw_selected_fields ) ) {
+			return array();
+		}
+
+		$parts = explode( ',', $raw_selected_fields );
+		$selected = array();
+
+		foreach ( $parts as $part ) {
+			$field_id = sanitize_key( trim( (string) $part ) );
+			if ( '' !== $field_id ) {
+				$selected[] = $field_id;
+			}
+		}
+
+		return array_values( array_unique( $selected ) );
+	}
+
+	/**
+	 * Filter question/answer rows by selected field identifiers.
+	 *
+	 * @since    1.0.0
+	 * @param    array $question_answers Full rows.
+	 * @param    array $selected_field_ids Selected field IDs.
+	 * @return   array
+	 */
+	private function filter_analytics_pdf_question_answers( $question_answers, $selected_field_ids ) {
+		if ( ! is_array( $question_answers ) ) {
+			return array();
+		}
+
+		if ( ! is_array( $selected_field_ids ) || empty( $selected_field_ids ) ) {
+			return $question_answers;
+		}
+
+		$selected_map = array();
+		foreach ( $selected_field_ids as $selected_field_id ) {
+			$normalized = sanitize_key( (string) $selected_field_id );
+			if ( '' !== $normalized ) {
+				$selected_map[ $normalized ] = true;
+			}
+		}
+
+		if ( empty( $selected_map ) ) {
+			return $question_answers;
+		}
+
+		$filtered = array();
+		foreach ( $question_answers as $entry ) {
+			if ( ! is_array( $entry ) ) {
+				continue;
+			}
+
+			$field_id = isset( $entry['field_id'] ) ? sanitize_key( (string) $entry['field_id'] ) : '';
+			if ( '' !== $field_id && isset( $selected_map[ $field_id ] ) ) {
+				$filtered[] = $entry;
+			}
+		}
+
+		return $filtered;
+	}
+
+	/**
+	 * Ensure Dompdf is autoloaded.
+	 *
+	 * @since    1.0.0
+	 * @return   bool
+	 */
+	private function ensure_dompdf_available() {
+		if ( class_exists( '\\Dompdf\\Dompdf' ) ) {
+			return true;
+		}
+
+		$autoload_path = plugin_dir_path( dirname( __FILE__ ) ) . 'vendor/autoload.php';
+		if ( file_exists( $autoload_path ) ) {
+			require_once $autoload_path;
+		}
+
+		return class_exists( '\\Dompdf\\Dompdf' );
+	}
+
+	/**
+	 * Get source row for PDF export using a single JOIN query.
+	 *
+	 * @since    1.0.0
+	 * @param    int $response_id Response ID filter.
+	 * @param    int $form_id Form ID filter.
+	 * @return   array
+	 */
+	private function get_analytics_pdf_source_row( $response_id, $form_id ) {
+		global $wpdb;
+
+		$response_id = absint( $response_id );
+		$form_id = absint( $form_id );
+
+		if ( $response_id <= 0 && $form_id <= 0 ) {
+			return array();
+		}
+
+		$forms_table = $this->get_forms_table_name();
+		$responses_table = $this->get_responses_table_name();
+
+		$forms_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $forms_table ) );
+		$responses_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $responses_table ) );
+		if ( $forms_exists !== $forms_table || $responses_exists !== $responses_table ) {
+			return array();
+		}
+
+		$where_clauses = array( '1=1' );
+		$params = array();
+
+		if ( $response_id > 0 ) {
+			$where_clauses[] = 'r.id = %d';
+			$params[] = $response_id;
+		}
+
+		if ( $form_id > 0 ) {
+			$where_clauses[] = 'r.form_id = %d';
+			$params[] = $form_id;
+		}
+
+		$sql = "SELECT r.id AS response_id, r.form_id, r.datos_usuario, r.metadatos, r.fecha_creacion AS response_created_at, f.nombre AS form_name, f.esquema_json FROM {$responses_table} r INNER JOIN {$forms_table} f ON f.id = r.form_id WHERE " . implode( ' AND ', $where_clauses ) . ' ORDER BY r.fecha_creacion DESC LIMIT 1';
+		$prepared_sql = empty( $params ) ? $sql : $wpdb->prepare( $sql, $params );
+		$row = $wpdb->get_row( $prepared_sql, ARRAY_A );
+
+		return is_array( $row ) ? $row : array();
+	}
+
+	/**
+	 * Build ordered question/answer rows based on schema sections and fields.
+	 *
+	 * @since    1.0.0
+	 * @param    array $schema Decoded schema JSON.
+	 * @param    array $datos_usuario Decoded response JSON.
+	 * @return   array
+	 */
+	private function build_analytics_pdf_question_answers( $schema, $datos_usuario ) {
+		$rows = array();
+		$sections = $this->extract_sections_from_schema( is_array( $schema ) ? $schema : array() );
+		$field_index = 1;
+
+		foreach ( $sections as $section ) {
+			if ( ! is_array( $section ) || empty( $section['fields'] ) || ! is_array( $section['fields'] ) ) {
+				continue;
+			}
+
+			foreach ( $section['fields'] as $field ) {
+				if ( ! is_array( $field ) ) {
+					continue;
+				}
+
+				$field_id = $this->get_field_identifier( $field, $field_index );
+				$label = isset( $field['label'] ) ? sanitize_text_field( (string) $field['label'] ) : '';
+
+				if ( '' === $label ) {
+					$label = ucfirst( str_replace( '_', ' ', $field_id ) );
+				}
+
+				$rows[] = array(
+					'field_id' => $field_id,
+					'question' => $label,
+					'answer' => $this->resolve_analytics_pdf_answer_value( $datos_usuario, $field_id ),
+				);
+
+				$field_index++;
+			}
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * Resolve printable answer value by field identifier.
+	 *
+	 * @since    1.0.0
+	 * @param    array  $datos_usuario Decoded response payload.
+	 * @param    string $field_id Field identifier.
+	 * @return   string
+	 */
+	private function resolve_analytics_pdf_answer_value( $datos_usuario, $field_id ) {
+		if ( ! is_array( $datos_usuario ) || '' === (string) $field_id ) {
+			return '-';
+		}
+
+		if ( array_key_exists( $field_id, $datos_usuario ) ) {
+			return $this->normalize_analytics_pdf_answer_value( $datos_usuario[ $field_id ] );
+		}
+
+		$normalized_target = sanitize_key( (string) $field_id );
+		foreach ( $datos_usuario as $key => $value ) {
+			if ( sanitize_key( (string) $key ) === $normalized_target ) {
+				return $this->normalize_analytics_pdf_answer_value( $value );
+			}
+		}
+
+		return '-';
+	}
+
+	/**
+	 * Normalize answer value to printable scalar.
+	 *
+	 * @since    1.0.0
+	 * @param    mixed $value Answer value.
+	 * @return   string
+	 */
+	private function normalize_analytics_pdf_answer_value( $value ) {
+		if ( is_array( $value ) ) {
+			$items = array();
+			foreach ( $value as $item ) {
+				if ( is_scalar( $item ) ) {
+					$clean_item = sanitize_text_field( (string) $item );
+					if ( '' !== $clean_item ) {
+						$items[] = $clean_item;
+					}
+				}
+			}
+
+			return ! empty( $items ) ? implode( ', ', $items ) : '-';
+		}
+
+		if ( is_bool( $value ) ) {
+			return $value ? __( 'Sí', 'bform' ) : __( 'No', 'bform' );
+		}
+
+		if ( ! is_scalar( $value ) ) {
+			return '-';
+		}
+
+		$clean_value = trim( (string) $value );
+		if ( '' === $clean_value ) {
+			return '-';
+		}
+
+		if ( 0 === strpos( $clean_value, 'data:image/' ) ) {
+			return __( 'Firma capturada (Base64)', 'bform' );
+		}
+
+		return sanitize_textarea_field( $clean_value );
+	}
+
+	/**
+	 * Build PDF HTML document.
+	 *
+	 * @since    1.0.0
+	 * @param    array $row Source row.
+	 * @param    array $question_answers Ordered question/answer rows.
+	 * @return   string
+	 */
+	private function build_analytics_pdf_html( $row, $question_answers ) {
+		$form_name = isset( $row['form_name'] ) ? sanitize_text_field( (string) $row['form_name'] ) : __( 'Formulario', 'bform' );
+		$response_id = isset( $row['response_id'] ) ? absint( $row['response_id'] ) : 0;
+		$submitted_at = isset( $row['response_created_at'] ) ? sanitize_text_field( (string) $row['response_created_at'] ) : '';
+
+		$submitted_at_label = '';
+		if ( '' !== $submitted_at ) {
+			$submitted_at_label = wp_date( 'd/m/Y H:i', strtotime( $submitted_at ) );
+		}
+
+		$rows_html = '';
+		if ( is_array( $question_answers ) && ! empty( $question_answers ) ) {
+			foreach ( $question_answers as $entry ) {
+				$question = isset( $entry['question'] ) ? esc_html( (string) $entry['question'] ) : '';
+				$answer = isset( $entry['answer'] ) ? esc_html( (string) $entry['answer'] ) : '-';
+				$rows_html .= '<tr><th>' . $question . '</th><td>' . $answer . '</td></tr>';
+			}
+		} else {
+			$rows_html = '<tr><th>' . esc_html__( 'Sin campos definidos', 'bform' ) . '</th><td>-</td></tr>';
+		}
+
+		$html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' .
+			'body{font-family:DejaVu Sans,sans-serif;color:#2D3748;font-size:12px;margin:28px;}' .
+			'.header{border-bottom:2px solid #D32F2F;padding-bottom:10px;margin-bottom:18px;}' .
+			'.title{font-size:20px;font-weight:700;margin:0 0 6px;}' .
+			'.meta{font-size:11px;color:#718096;margin:2px 0;}' .
+			'table{width:100%;border-collapse:collapse;}' .
+			'th,td{padding:8px 10px;border:1px solid #E2E8F0;vertical-align:top;}' .
+			'th{width:38%;background:#FFEBEE;text-align:left;font-weight:700;}' .
+			'td{background:#fff;}' .
+			'.footer{margin-top:14px;font-size:10px;color:#718096;text-align:right;}' .
+			'</style></head><body>' .
+			'<div class="header"><p class="title">' . esc_html__( 'Reporte de Respuesta', 'bform' ) . '</p>' .
+			'<p class="meta"><strong>' . esc_html__( 'Formulario:', 'bform' ) . '</strong> ' . esc_html( $form_name ) . '</p>' .
+			'<p class="meta"><strong>' . esc_html__( 'ID de respuesta:', 'bform' ) . '</strong> ' . esc_html( (string) $response_id ) . '</p>' .
+			'<p class="meta"><strong>' . esc_html__( 'Fecha de envío:', 'bform' ) . '</strong> ' . esc_html( '' !== $submitted_at_label ? $submitted_at_label : '-' ) . '</p></div>' .
+			'<table><tbody>' . $rows_html . '</tbody></table>' .
+			'<p class="footer">' . esc_html__( 'Documento generado automáticamente por ULEAM Constructor de Formularios', 'bform' ) . '</p>' .
+			'</body></html>';
+
+		return $html;
 	}
 
 	/**
@@ -1658,9 +2355,20 @@ class Bform_Admin {
 				$this->export_analytics_csv( $analytics_filter_form_id, $analytics_search_term );
 				return;
 			}
+
+			$analytics_export_pdf = ! empty( $_GET['export_pdf'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['export_pdf'] ) );
+			if ( $analytics_export_pdf ) {
+				$analytics_filter_form_id = isset( $_GET['filter_form_id'] ) ? absint( $_GET['filter_form_id'] ) : 0;
+				$analytics_response_id = isset( $_GET['response_id'] ) ? absint( $_GET['response_id'] ) : 0;
+				$analytics_selected_fields_raw = isset( $_GET['selected_fields'] ) ? sanitize_text_field( wp_unslash( $_GET['selected_fields'] ) ) : '';
+				$analytics_selected_fields = $this->parse_analytics_selected_fields( $analytics_selected_fields_raw );
+				$this->export_analytics_pdf( $analytics_response_id, $analytics_filter_form_id, $analytics_selected_fields );
+				return;
+			}
 		}
 
-		if ( 'bform-principal' !== $page ) {
+		$allowed_pages = array( 'bform-principal', 'bform-plantillas' );
+		if ( ! in_array( $page, $allowed_pages, true ) ) {
 			return;
 		}
 
@@ -1670,6 +2378,7 @@ class Bform_Admin {
 
 		$action = sanitize_key( wp_unslash( $_REQUEST['bform_action'] ) );
 		$notice_key = 'action_done';
+		$redirect_page = $page;
 
 		switch ( $action ) {
 			case 'toggle_status':
@@ -1677,13 +2386,13 @@ class Bform_Admin {
 			case 'delete_form':
 				$form_id = isset( $_REQUEST['form_id'] ) ? absint( $_REQUEST['form_id'] ) : 0;
 				if ( $form_id <= 0 ) {
-					wp_safe_redirect( $this->get_principal_redirect_url( 'invalid_form' ) );
+					wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_form' ) );
 					exit;
 				}
 
 				$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
 				if ( ! wp_verify_nonce( $nonce, 'bform_' . $action . '_' . $form_id ) ) {
-					wp_safe_redirect( $this->get_principal_redirect_url( 'invalid_nonce' ) );
+					wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_nonce' ) );
 					exit;
 				}
 
@@ -1704,19 +2413,55 @@ class Bform_Admin {
 				}
 				break;
 			case 'save_template':
-				$this->handle_save_template_action();
+				$this->handle_save_template_action( $redirect_page );
+				$notice_key = 'template_saved';
+				break;
+			case 'duplicate_template':
+				$template_id = isset( $_REQUEST['template_id'] ) ? absint( $_REQUEST['template_id'] ) : 0;
+				if ( $template_id <= 0 ) {
+					wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_template' ) );
+					exit;
+				}
+
+				$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
+				if ( ! wp_verify_nonce( $nonce, 'bform_duplicate_template_' . $template_id ) ) {
+					wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_nonce' ) );
+					exit;
+				}
+
+				$this->handle_duplicate_template_action( $template_id );
+				$notice_key = 'template_duplicated';
 				break;
 			case 'delete_template':
-				$this->handle_delete_template_action();
+				$this->handle_delete_template_action( $redirect_page );
+				$notice_key = 'template_deleted';
 				break;
 			case 'merge_templates':
-				$this->handle_merge_templates_action();
+				$this->handle_merge_templates_action( $redirect_page );
 				break;
+			case 'use_template':
+				$created_form_id = $this->handle_use_template_action();
+				if ( is_wp_error( $created_form_id ) ) {
+					wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, $created_form_id->get_error_code() ) );
+					exit;
+				}
+
+				wp_safe_redirect( $this->get_constructor_redirect_url( $created_form_id, 'form_created' ) );
+				exit;
+			case 'combine_templates_to_form':
+				$created_form_id = $this->handle_combine_templates_to_form_action();
+				if ( is_wp_error( $created_form_id ) ) {
+					wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, $created_form_id->get_error_code() ) );
+					exit;
+				}
+
+				wp_safe_redirect( $this->get_constructor_redirect_url( $created_form_id, 'form_created' ) );
+				exit;
 			default:
 				return;
 		}
 
-		wp_safe_redirect( $this->get_principal_redirect_url( $notice_key ) );
+		wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, $notice_key ) );
 		exit;
 	}
 
@@ -1725,12 +2470,12 @@ class Bform_Admin {
 	 *
 	 * @since    1.0.0
 	 */
-	private function handle_save_template_action() {
+	private function handle_save_template_action( $redirect_page = 'bform-principal' ) {
 		global $wpdb;
 
 		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
 		if ( ! wp_verify_nonce( $nonce, 'bform_save_template' ) ) {
-			wp_safe_redirect( $this->get_principal_redirect_url( 'invalid_nonce' ) );
+			wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_nonce' ) );
 			exit;
 		}
 
@@ -1741,7 +2486,7 @@ class Bform_Admin {
 
 		$decoded = json_decode( $esquema_json, true );
 		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
-			wp_safe_redirect( $this->get_principal_redirect_url( 'invalid_json' ) );
+			wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_json' ) );
 			exit;
 		}
 
@@ -1763,18 +2508,49 @@ class Bform_Admin {
 	}
 
 	/**
+	 * Handle template duplicate action.
+	 *
+	 * @since    1.0.0
+	 * @param    int $template_id Template ID.
+	 */
+	private function handle_duplicate_template_action( $template_id ) {
+		global $wpdb;
+
+		$template = $this->get_template_by_id( $template_id );
+		if ( empty( $template ) || ! is_array( $template ) ) {
+			return;
+		}
+
+		$original_name = isset( $template['nombre'] ) ? sanitize_text_field( (string) $template['nombre'] ) : __( 'Plantilla', 'bform' );
+		$new_name = $this->generate_unique_template_name( $original_name . ' (Copia)' );
+		$schema_json = isset( $template['esquema_json'] ) ? (string) $template['esquema_json'] : wp_json_encode( $this->get_default_constructor_schema() );
+		$category = isset( $template['categoria'] ) ? sanitize_text_field( (string) $template['categoria'] ) : '';
+
+		$wpdb->insert(
+			$this->get_templates_table_name(),
+			array(
+				'nombre' => $new_name,
+				'esquema_json' => $schema_json,
+				'categoria' => $category,
+				'fecha_creacion' => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%s', '%s' )
+		);
+	}
+
+	/**
 	 * Handle template delete action.
 	 *
 	 * @since    1.0.0
 	 */
-	private function handle_delete_template_action() {
+	private function handle_delete_template_action( $redirect_page = 'bform-principal' ) {
 		global $wpdb;
 
 		$template_id = isset( $_REQUEST['template_id'] ) ? absint( $_REQUEST['template_id'] ) : 0;
 		$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
 
 		if ( $template_id <= 0 || ! wp_verify_nonce( $nonce, 'bform_delete_template_' . $template_id ) ) {
-			wp_safe_redirect( $this->get_principal_redirect_url( 'invalid_nonce' ) );
+			wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_nonce' ) );
 			exit;
 		}
 
@@ -1786,12 +2562,12 @@ class Bform_Admin {
 	 *
 	 * @since    1.0.0
 	 */
-	private function handle_merge_templates_action() {
+	private function handle_merge_templates_action( $redirect_page = 'bform-principal' ) {
 		global $wpdb;
 
 		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
 		if ( ! wp_verify_nonce( $nonce, 'bform_merge_templates' ) ) {
-			wp_safe_redirect( $this->get_principal_redirect_url( 'invalid_nonce' ) );
+			wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'invalid_nonce' ) );
 			exit;
 		}
 
@@ -1799,7 +2575,7 @@ class Bform_Admin {
 		$selected = array_values( array_filter( $selected ) );
 
 		if ( count( $selected ) < 2 ) {
-			wp_safe_redirect( $this->get_principal_redirect_url( 'merge_needs_two' ) );
+			wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'merge_needs_two' ) );
 			exit;
 		}
 
@@ -1810,7 +2586,7 @@ class Bform_Admin {
 
 		$merged_schema = $this->merge_template_schemas( $templates );
 		if ( is_wp_error( $merged_schema ) ) {
-			wp_safe_redirect( $this->get_principal_redirect_url( 'merge_error' ) );
+			wp_safe_redirect( $this->get_admin_redirect_url( $redirect_page, 'merge_error' ) );
 			exit;
 		}
 
@@ -1825,6 +2601,96 @@ class Bform_Admin {
 			),
 			array( '%s', '%s', '%s', '%s' )
 		);
+	}
+
+	/**
+	 * Handle action: create form from one selected template.
+	 *
+	 * @since    1.0.0
+	 * @return   int|WP_Error
+	 */
+	private function handle_use_template_action() {
+		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'bform_use_template' ) ) {
+			return new WP_Error( 'invalid_nonce', __( 'Solicitud inválida para usar plantilla.', 'bform' ) );
+		}
+
+		$template_id = isset( $_POST['template_id'] ) ? absint( $_POST['template_id'] ) : 0;
+		if ( $template_id <= 0 ) {
+			return new WP_Error( 'invalid_template', __( 'Debes seleccionar una plantilla válida.', 'bform' ) );
+		}
+
+		$template = $this->get_template_by_id( $template_id );
+		if ( empty( $template ) || ! is_array( $template ) ) {
+			return new WP_Error( 'invalid_template', __( 'La plantilla seleccionada no existe.', 'bform' ) );
+		}
+
+		$schema_raw = isset( $template['esquema_json'] ) ? (string) $template['esquema_json'] : '';
+		$decoded_schema = json_decode( $schema_raw, true );
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded_schema ) ) {
+			return new WP_Error( 'invalid_json', __( 'El esquema JSON de la plantilla no es válido.', 'bform' ) );
+		}
+
+		$form_name = ! empty( $template['nombre'] ) ? sanitize_text_field( (string) $template['nombre'] ) : __( 'Formulario sin título', 'bform' );
+
+		return $this->create_form_from_schema( $decoded_schema, $form_name, $template_id );
+	}
+
+	/**
+	 * Handle action: combine templates and create one new form.
+	 *
+	 * @since    1.0.0
+	 * @return   int|WP_Error
+	 */
+	private function handle_combine_templates_to_form_action() {
+		global $wpdb;
+
+		$nonce = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'bform_combine_templates_to_form' ) ) {
+			return new WP_Error( 'invalid_nonce', __( 'Solicitud inválida para combinar plantillas.', 'bform' ) );
+		}
+
+		$selected = isset( $_POST['merge_template_ids'] ) && is_array( $_POST['merge_template_ids'] ) ? array_map( 'absint', wp_unslash( $_POST['merge_template_ids'] ) ) : array();
+		$selected = array_values( array_unique( array_filter( $selected ) ) );
+
+		if ( count( $selected ) < 2 ) {
+			return new WP_Error( 'merge_needs_two', __( 'Selecciona al menos dos plantillas para combinar.', 'bform' ) );
+		}
+
+		$table_name = $this->get_templates_table_name();
+		$placeholders = implode( ',', array_fill( 0, count( $selected ), '%d' ) );
+		$query = $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id IN ({$placeholders})", $selected );
+		$raw_templates = $wpdb->get_results( $query, ARRAY_A );
+
+		if ( ! is_array( $raw_templates ) || empty( $raw_templates ) ) {
+			return new WP_Error( 'invalid_template', __( 'No se encontraron plantillas para combinar.', 'bform' ) );
+		}
+
+		$indexed_templates = array();
+		foreach ( $raw_templates as $template_row ) {
+			$template_row_id = isset( $template_row['id'] ) ? absint( $template_row['id'] ) : 0;
+			if ( $template_row_id > 0 ) {
+				$indexed_templates[ $template_row_id ] = $template_row;
+			}
+		}
+
+		$ordered_templates = array();
+		foreach ( $selected as $template_id ) {
+			if ( isset( $indexed_templates[ $template_id ] ) ) {
+				$ordered_templates[] = $indexed_templates[ $template_id ];
+			}
+		}
+
+		if ( count( $ordered_templates ) < 2 ) {
+			return new WP_Error( 'invalid_template', __( 'Una o más plantillas seleccionadas no existen.', 'bform' ) );
+		}
+
+		$merged_schema = $this->merge_template_schemas( $ordered_templates );
+		if ( is_wp_error( $merged_schema ) ) {
+			return new WP_Error( 'merge_error', $merged_schema->get_error_message() );
+		}
+
+		return $this->create_form_from_schema( $merged_schema, __( 'Formulario combinado', 'bform' ), 0 );
 	}
 
 	/**
@@ -1919,6 +2785,86 @@ class Bform_Admin {
 			'sections' => $renumbered_sections,
 			'branching_rules' => $merged_branching,
 		);
+	}
+
+	/**
+	 * Create a new form row from template schema.
+	 *
+	 * @since    1.0.0
+	 * @param    array  $schema      Template schema.
+	 * @param    string $form_name   Desired form name.
+	 * @param    int    $template_id Source template ID.
+	 * @return   int|WP_Error
+	 */
+	private function create_form_from_schema( $schema, $form_name, $template_id = 0 ) {
+		global $wpdb;
+
+		if ( ! is_array( $schema ) ) {
+			return new WP_Error( 'invalid_schema', __( 'El esquema de la plantilla no es válido.', 'bform' ) );
+		}
+
+		$sanitized_schema = $this->sanitize_constructor_schema( $schema );
+		if ( is_wp_error( $sanitized_schema ) ) {
+			return $sanitized_schema;
+		}
+
+		$sanitized_rules = $this->sanitize_logic_rules( $sanitized_schema );
+		if ( is_wp_error( $sanitized_rules ) ) {
+			return $sanitized_rules;
+		}
+
+		$sanitized_schema['branching_rules'] = $sanitized_rules;
+
+		$cycle_check = $this->validate_navigation_graph_no_cycles( $sanitized_schema );
+		if ( is_wp_error( $cycle_check ) ) {
+			return $cycle_check;
+		}
+
+		$this->ensure_plugin_tables_schema();
+
+		$normalized_name = trim( preg_replace( '/\s+/', ' ', (string) $form_name ) );
+		if ( '' === $normalized_name ) {
+			$normalized_name = __( 'Formulario sin título', 'bform' );
+		}
+
+		$unique_form_name = $this->generate_unique_form_name( $normalized_name );
+		$slug_base = sanitize_title( $unique_form_name );
+		if ( '' === $slug_base ) {
+			$slug_base = 'formulario';
+		}
+
+		$table_name = $this->get_forms_table_name();
+		$slug = $this->generate_unique_slug( $slug_base );
+
+		$insert_data = array(
+			'template_id' => absint( $template_id ) > 0 ? absint( $template_id ) : 0,
+			'nombre' => $unique_form_name,
+			'esquema_json' => wp_json_encode( $sanitized_schema ),
+			'slug_shortcode' => $slug,
+			'activo' => 1,
+			'fecha_creacion' => current_time( 'mysql' ),
+			'fecha_actualizacion' => current_time( 'mysql' ),
+		);
+
+		$insert_format = array( '%d', '%s', '%s', '%s', '%d', '%s', '%s' );
+
+		if ( $this->table_has_column( $table_name, 'form_key' ) ) {
+			$insert_data['form_key'] = $this->generate_unique_form_key( $table_name );
+			$insert_format[] = '%s';
+		}
+
+		$inserted = $wpdb->insert( $table_name, $insert_data, $insert_format );
+		if ( false === $inserted ) {
+			$wpdb_message = ! empty( $wpdb->last_error ) ? $wpdb->last_error : __( 'No se pudo crear el formulario en la base de datos.', 'bform' );
+			return new WP_Error( 'db_error', $wpdb_message );
+		}
+
+		$new_form_id = (int) $wpdb->insert_id;
+		if ( $new_form_id <= 0 ) {
+			return new WP_Error( 'invalid_form', __( 'No se pudo crear el formulario desde la plantilla.', 'bform' ) );
+		}
+
+		return $new_form_id;
 	}
 
 	/**
@@ -2204,6 +3150,76 @@ class Bform_Admin {
 	}
 
 	/**
+	 * Count fields available in a template schema.
+	 *
+	 * @since    1.0.0
+	 * @param    array $schema Template schema payload.
+	 * @return   int
+	 */
+	private function count_template_schema_fields( $schema ) {
+		if ( ! is_array( $schema ) ) {
+			return 0;
+		}
+
+		$sections = $this->extract_sections_from_schema( $schema );
+		$count = 0;
+
+		foreach ( $sections as $section ) {
+			if ( empty( $section['fields'] ) || ! is_array( $section['fields'] ) ) {
+				continue;
+			}
+
+			$count += count( $section['fields'] );
+		}
+
+		return max( 0, absint( $count ) );
+	}
+
+	/**
+	 * Build concise card description from schema/category.
+	 *
+	 * @since    1.0.0
+	 * @param    array  $schema   Template schema payload.
+	 * @param    string $category Template category.
+	 * @return   string
+	 */
+	private function build_template_card_description( $schema, $category ) {
+		$field_labels = array();
+
+		if ( is_array( $schema ) ) {
+			$sections = $this->extract_sections_from_schema( $schema );
+			foreach ( $sections as $section ) {
+				if ( empty( $section['fields'] ) || ! is_array( $section['fields'] ) ) {
+					continue;
+				}
+
+				foreach ( $section['fields'] as $field ) {
+					if ( ! is_array( $field ) ) {
+						continue;
+					}
+
+					$label = isset( $field['label'] ) ? sanitize_text_field( (string) $field['label'] ) : '';
+					if ( '' !== $label ) {
+						$field_labels[] = $label;
+					}
+				}
+			}
+		}
+
+		$field_labels = array_values( array_unique( $field_labels ) );
+		if ( ! empty( $field_labels ) ) {
+			$field_labels = array_slice( $field_labels, 0, 4 );
+			return implode( ', ', $field_labels ) . '.';
+		}
+
+		if ( '' !== trim( (string) $category ) ) {
+			return sprintf( __( 'Categoría: %s', 'bform' ), sanitize_text_field( (string) $category ) );
+		}
+
+		return __( 'Plantilla reutilizable para crear nuevos formularios.', 'bform' );
+	}
+
+	/**
 	 * Get one template by ID.
 	 *
 	 * @since    1.0.0
@@ -2240,6 +3256,28 @@ class Bform_Admin {
 	}
 
 	/**
+	 * Build redirect URL for admin pages handled by this plugin.
+	 *
+	 * @since    1.0.0
+	 * @param    string $page       Admin page slug.
+	 * @param    string $notice     Notice key.
+	 * @param    array  $extra_args Extra query args.
+	 * @return   string
+	 */
+	private function get_admin_redirect_url( $page, $notice, $extra_args = array() ) {
+		$redirect_args = array(
+			'page' => sanitize_key( (string) $page ),
+			'bform_notice' => sanitize_key( $notice ),
+		);
+
+		if ( is_array( $extra_args ) && ! empty( $extra_args ) ) {
+			$redirect_args = array_merge( $redirect_args, $extra_args );
+		}
+
+		return add_query_arg( $redirect_args, admin_url( 'admin.php' ) );
+	}
+
+	/**
 	 * Build principal page redirect URL with notice.
 	 *
 	 * @since    1.0.0
@@ -2247,13 +3285,28 @@ class Bform_Admin {
 	 * @return   string
 	 */
 	private function get_principal_redirect_url( $notice ) {
-		return add_query_arg(
-			array(
-				'page' => 'bform-principal',
-				'bform_notice' => sanitize_key( $notice ),
-			),
-			admin_url( 'admin.php' )
+		return $this->get_admin_redirect_url( 'bform-principal', $notice );
+	}
+
+	/**
+	 * Build constructor redirect URL with optional notice.
+	 *
+	 * @since    1.0.0
+	 * @param    int    $form_id Form ID.
+	 * @param    string $notice  Optional notice key.
+	 * @return   string
+	 */
+	private function get_constructor_redirect_url( $form_id, $notice = '' ) {
+		$redirect_args = array(
+			'page' => 'bform-constructor',
+			'form_id' => absint( $form_id ),
 		);
+
+		if ( '' !== trim( (string) $notice ) ) {
+			$redirect_args['bform_notice'] = sanitize_key( $notice );
+		}
+
+		return add_query_arg( $redirect_args, admin_url( 'admin.php' ) );
 	}
 
 	/**
@@ -2368,6 +3421,71 @@ class Bform_Admin {
 		while ( $counter < 10000 ) {
 			$candidate = $normalized_base . ' (' . $counter . ')';
 			if ( ! $this->form_name_exists( $candidate ) ) {
+				return $candidate;
+			}
+			$counter++;
+		}
+
+		return $normalized_base . ' (' . time() . ')';
+	}
+
+	/**
+	 * Check if a template name already exists.
+	 *
+	 * @since    1.0.0
+	 * @param    string $template_name          Template name.
+	 * @param    int    $exclude_template_id    Optional template ID to exclude.
+	 * @return   bool
+	 */
+	private function template_name_exists( $template_name, $exclude_template_id = 0 ) {
+		global $wpdb;
+
+		$normalized_name = trim( preg_replace( '/\s+/', ' ', (string) $template_name ) );
+		if ( '' === $normalized_name ) {
+			return false;
+		}
+
+		$table_name = $this->get_templates_table_name();
+		$exclude_template_id = absint( $exclude_template_id );
+
+		if ( $exclude_template_id > 0 ) {
+			$query = $wpdb->prepare(
+				"SELECT id FROM {$table_name} WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s)) AND id <> %d LIMIT 1",
+				$normalized_name,
+				$exclude_template_id
+			);
+		} else {
+			$query = $wpdb->prepare(
+				"SELECT id FROM {$table_name} WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s)) LIMIT 1",
+				$normalized_name
+			);
+		}
+
+		$exists = $wpdb->get_var( $query );
+		return ! empty( $exists );
+	}
+
+	/**
+	 * Generate unique template name using incremental suffix.
+	 *
+	 * @since    1.0.0
+	 * @param    string $base_name Base template name.
+	 * @return   string
+	 */
+	private function generate_unique_template_name( $base_name ) {
+		$normalized_base = trim( preg_replace( '/\s+/', ' ', (string) $base_name ) );
+		if ( '' === $normalized_base ) {
+			$normalized_base = __( 'Plantilla sin título', 'bform' );
+		}
+
+		if ( ! $this->template_name_exists( $normalized_base ) ) {
+			return $normalized_base;
+		}
+
+		$counter = 2;
+		while ( $counter < 10000 ) {
+			$candidate = $normalized_base . ' (' . $counter . ')';
+			if ( ! $this->template_name_exists( $candidate ) ) {
 				return $candidate;
 			}
 			$counter++;
@@ -2516,6 +3634,9 @@ class Bform_Admin {
 					'form_created' => __( 'Formulario creado correctamente.', 'bform' ),
 					'form_updated' => __( 'Formulario actualizado correctamente.', 'bform' ),
 					'form_deleted' => __( 'Formulario eliminado correctamente.', 'bform' ),
+					'template_saved' => __( 'Plantilla guardada correctamente.', 'bform' ),
+					'template_deleted' => __( 'Plantilla eliminada correctamente.', 'bform' ),
+					'template_duplicated' => __( 'Plantilla duplicada correctamente.', 'bform' ),
 					'action_done' => __( 'Acción ejecutada correctamente.', 'bform' ),
 				),
 			)
@@ -2545,6 +3666,10 @@ class Bform_Admin {
 		}
 
 		if ( ! empty( $this->constructor_hook_suffix ) && $hook_suffix === $this->constructor_hook_suffix ) {
+			return true;
+		}
+
+		if ( ! empty( $this->templates_hook_suffix ) && $hook_suffix === $this->templates_hook_suffix ) {
 			return true;
 		}
 

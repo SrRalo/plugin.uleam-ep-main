@@ -30,6 +30,7 @@
 	<nav class="bform-view-nav" aria-label="<?php esc_attr_e( 'Navegación de vistas', 'bform' ); ?>">
 		<a href="<?php echo esc_url( $principal_page_url ); ?>"><?php esc_html_e( 'Principal', 'bform' ); ?></a>
 		<a class="is-active" href="<?php echo esc_url( $constructor_nav_url ); ?>"><?php esc_html_e( 'Constructor', 'bform' ); ?></a>
+		<a href="<?php echo esc_url( $templates_page_url ); ?>"><?php esc_html_e( 'Plantillas', 'bform' ); ?></a>
 		<a href="<?php echo esc_url( $analytics_page_url ); ?>"><?php esc_html_e( 'Analíticas', 'bform' ); ?></a>
 	</nav>
 

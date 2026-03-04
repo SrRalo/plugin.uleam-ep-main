@@ -10,12 +10,13 @@
  * @subpackage Bform/admin/partials
  */
 ?>
-<div class="wrap bform-admin-wrap bform-constructor-wrap bform-constructor-app" data-form-id="<?php echo esc_attr( (string) $constructor_form_id ); ?>" data-draft-id="<?php echo esc_attr( (string) $constructor_draft_id ); ?>">
+<div class="wrap bform-admin-wrap bform-constructor-wrap bform-constructor-app" data-form-id="<?php echo esc_attr( (string) $constructor_form_id ); ?>" data-draft-id="<?php echo esc_attr( (string) $constructor_draft_id ); ?>" data-template-id="<?php echo esc_attr( (string) $constructor_template_id ); ?>" data-template-category="<?php echo esc_attr( (string) $constructor_template_category ); ?>">
 	<script type="application/json" class="bform-constructor-initial-schema"><?php echo wp_json_encode( $constructor_form_schema ); ?></script>
 
 	<nav class="bform-view-nav" aria-label="<?php esc_attr_e( 'Navegación de vistas', 'bform' ); ?>">
 		<a href="<?php echo esc_url( $principal_page_url ); ?>"><?php esc_html_e( 'Principal', 'bform' ); ?></a>
 		<a class="is-active" href="<?php echo esc_url( $constructor_page_url ); ?>"><?php esc_html_e( 'Constructor', 'bform' ); ?></a>
+		<a href="<?php echo esc_url( $templates_page_url ); ?>"><?php esc_html_e( 'Plantillas', 'bform' ); ?></a>
 		<a href="<?php echo esc_url( $analytics_page_url ); ?>"><?php esc_html_e( 'Analíticas', 'bform' ); ?></a>
 	</nav>
 
@@ -29,11 +30,31 @@
 		</div>
 		<div class="bform-builder-actions">
 			<input type="text" class="bform-form-name-input" value="<?php echo esc_attr( $constructor_form_name ); ?>" placeholder="<?php esc_attr_e( 'agregue un nombre', 'bform' ); ?>" />
+			<a class="button bform-constructor-template-btn" href="<?php echo esc_url( $templates_page_url ); ?>">
+				<span class="bform-constructor-template-btn-icon" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none">
+						<path d="M5 4h11l3 3v13H5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+						<path d="M9 4v6h6V4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+						<path d="M9 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+				</span>
+				<span><?php esc_html_e( 'Plantilla', 'bform' ); ?></span>
+			</a>
 			<button type="button" class="button button-primary bform-cta bform-save-constructor bform-save-constructor--large"><?php esc_html_e( 'Guardar formulario', 'bform' ); ?></button>
 		</div>
 	</header>
 
 	<div class="bform-constructor-status" aria-live="polite"></div>
+
+	<form id="bform-constructor-save-template-form" class="bform-template-hidden-form" method="post" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
+		<input type="hidden" name="page" value="bform-plantillas" />
+		<input type="hidden" name="bform_action" value="save_template" />
+		<input type="hidden" name="template_id" value="<?php echo esc_attr( (string) $constructor_template_id ); ?>" />
+		<input type="hidden" name="template_nombre" value="" class="bform-template-form-name" />
+		<input type="hidden" name="template_categoria" value="<?php echo esc_attr( (string) $constructor_template_category ); ?>" class="bform-template-form-category" />
+		<input type="hidden" name="template_esquema_json" value="" class="bform-template-form-schema" />
+		<?php wp_nonce_field( 'bform_save_template' ); ?>
+	</form>
 
 	<div class="bform-builder-layout">
 		<aside class="bform-builder-sidebar">
@@ -73,6 +94,13 @@
 					<input type="text" class="bform-prop-label" value="" />
 				</div>
 
+				<div class="bform-prop-item bform-prop-textarea-display-toggle" hidden>
+					<label class="bform-prop-checkbox-label">
+						<input type="checkbox" class="bform-prop-textarea-display-only-toggle" value="1" />
+						<span><?php esc_html_e( 'Deshabilitar input (solo mostrar texto)', 'bform' ); ?></span>
+					</label>
+				</div>
+
 				<div class="bform-prop-item">
 					<label class="bform-prop-checkbox-label">
 						<input type="checkbox" class="bform-prop-required-toggle" value="1" />
@@ -89,6 +117,17 @@
 
 				<div class="bform-prop-item bform-prop-description-text" hidden>
 					<label><?php esc_html_e( 'Descripción del campo', 'bform' ); ?></label>
+					<div class="bform-prop-textarea-toolbar" role="group" aria-label="<?php esc_attr_e( 'Formato de descripción del campo', 'bform' ); ?>">
+						<button type="button" class="button bform-prop-description-style-btn" data-format-tag="strong" aria-label="<?php esc_attr_e( 'Negrita', 'bform' ); ?>" title="<?php esc_attr_e( 'Negrita', 'bform' ); ?>">
+							<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6h5a3 3 0 010 6H9zm0 6h6a3 3 0 010 6H9z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+						</button>
+						<button type="button" class="button bform-prop-description-style-btn" data-format-tag="em" aria-label="<?php esc_attr_e( 'Texto inclinado', 'bform' ); ?>" title="<?php esc_attr_e( 'Texto inclinado', 'bform' ); ?>">
+							<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5h4M5 19h4M14 5L10 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						</button>
+						<button type="button" class="button bform-prop-description-style-btn" data-format-tag="u" aria-label="<?php esc_attr_e( 'Subrayado', 'bform' ); ?>" title="<?php esc_attr_e( 'Subrayado', 'bform' ); ?>">
+							<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 5v6a5 5 0 0010 0V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+						</button>
+					</div>
 					<textarea class="bform-prop-description-input" rows="3" placeholder="<?php esc_attr_e( 'Ej: Ingresa tu número de cédula sin guiones.', 'bform' ); ?>"></textarea>
 				</div>
 
@@ -135,6 +174,12 @@
 						<button type="button" class="button bform-choice-add-option"><?php esc_html_e( 'Agregar', 'bform' ); ?></button>
 					</div>
 					<ul class="bform-choice-options-list"></ul>
+					<div class="bform-choice-radio-other-toggle" hidden>
+						<label class="bform-prop-checkbox-label">
+							<input type="checkbox" class="bform-choice-radio-other-toggle-input" value="1" />
+							<span><?php esc_html_e( 'Habilitar opción "Otros" con campo de texto', 'bform' ); ?></span>
+						</label>
+					</div>
 				</div>
 
 				<div class="bform-prop-item bform-prop-canvas-width" hidden>
@@ -143,7 +188,7 @@
 				</div>
 				<div class="bform-prop-item bform-prop-canvas-color" hidden>
 					<label><?php esc_html_e( 'Color del trazo', 'bform' ); ?></label>
-					<input type="color" class="bform-prop-canvas-color-input" value="#1f2937" />
+					<input type="color" class="bform-prop-canvas-color-input" value="#2d3748" />
 				</div>
 				<div class="bform-prop-actions">
 					<button type="button" class="button bform-duplicate-field"><?php esc_html_e( 'Duplicar', 'bform' ); ?></button>

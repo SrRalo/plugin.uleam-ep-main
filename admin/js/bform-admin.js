@@ -360,6 +360,506 @@
 		});
 	}
 
+	function initAnalyticsExportModal() {
+		var $modal = $('#bformExportModal');
+		if (!$modal.length) {
+			return;
+		}
+
+		var $modalTitle = $modal.find('#bformExportModalTitle');
+		var $responseSelect = $modal.find('#bformExportResponseSelect');
+		var $generateButton = $modal.find('.bform-export-generate-btn');
+		var $currentResponsePreview = $modal.find('.bform-export-current-response-id');
+		var $fieldsPicker = $modal.find('#bformExportFieldsPicker');
+		var $previewBody = $modal.find('#bformExportPreviewBody');
+		var defaultTitle = $modalTitle.text();
+		var exportBaseUrl = $modal.attr('data-export-base-url') || '';
+		var currentFormId = 0;
+		var currentFields = [];
+		var selectedFieldIds = [];
+		var loadRequestToken = 0;
+
+		function escapeHtml(text) {
+			return $('<div>').text(text || '').html();
+		}
+
+		function parseResponseIds(rawIds) {
+			if (!rawIds) {
+				return [];
+			}
+
+			return String(rawIds)
+				.split(',')
+				.map(function(item) {
+					return parseInt(String(item).trim(), 10);
+				})
+				.filter(function(item) {
+					return !isNaN(item) && item > 0;
+				});
+		}
+
+		function fillResponseSelector(ids) {
+			if (!$responseSelect.length) {
+				return;
+			}
+
+			var optionsHtml = '<option value="0">Selecciona un ID de respuesta</option>';
+			if (Array.isArray(ids) && ids.length) {
+				ids.forEach(function(id) {
+					optionsHtml += '<option value="' + String(id) + '">' + String(id) + '</option>';
+				});
+			}
+
+			$responseSelect.html(optionsHtml);
+		}
+
+		function resetDynamicFieldState(message) {
+			currentFields = [];
+			selectedFieldIds = [];
+
+			if ($fieldsPicker.length) {
+				$fieldsPicker.html('<p class="bform-export-fields-empty">' + escapeHtml(message || 'Selecciona un ID de respuesta para cargar los campos respondidos.') + '</p>');
+			}
+
+			if ($previewBody.length) {
+				$previewBody.html('<p class="bform-export-preview-empty">Selecciona un ID de respuesta para previsualizar los campos.</p>');
+			}
+		}
+
+		function normalizeResponseFields(fields) {
+			if (!Array.isArray(fields)) {
+				return [];
+			}
+
+			var normalized = [];
+			var usedIds = {};
+
+			fields.forEach(function(field, index) {
+				if (!field || typeof field !== 'object') {
+					return;
+				}
+
+				var rawId = (field.field_id || '').toString().trim().toLowerCase();
+				var fieldId = rawId.replace(/[^a-z0-9_\-]/g, '');
+				if (!fieldId) {
+					fieldId = 'campo_' + String(index + 1);
+				}
+
+				if (usedIds[fieldId]) {
+					return;
+				}
+
+				usedIds[fieldId] = true;
+				var question = (field.question || fieldId).toString();
+				var answer = (field.answer || '-').toString();
+
+				normalized.push({
+					field_id: fieldId,
+					question: question,
+					answer: answer
+				});
+			});
+
+			return normalized;
+		}
+
+		function renderSelectedFieldsPreview() {
+			if (!$previewBody.length) {
+				return;
+			}
+
+			if (!currentFields.length) {
+				$previewBody.html('<p class="bform-export-preview-empty">No hay campos respondidos para este ID.</p>');
+				return;
+			}
+
+			var selectedMap = {};
+			selectedFieldIds.forEach(function(fieldId) {
+				selectedMap[String(fieldId)] = true;
+			});
+
+			var html = '';
+			currentFields.forEach(function(field) {
+				if (!selectedMap[field.field_id]) {
+					return;
+				}
+
+				html += '<div class="bform-export-entry-row">';
+				html += '<div class="bform-export-entry-question">' + escapeHtml(field.question) + '</div>';
+				html += '<div class="bform-export-entry-answer">' + escapeHtml(field.answer) + '</div>';
+				html += '</div>';
+			});
+
+			if (!html) {
+				$previewBody.html('<p class="bform-export-preview-empty">Marca al menos un campo para incluir en el PDF.</p>');
+				return;
+			}
+
+			$previewBody.html(html);
+		}
+
+		function renderFieldPicker() {
+			if (!$fieldsPicker.length) {
+				return;
+			}
+
+			if (!currentFields.length) {
+				$fieldsPicker.html('<p class="bform-export-fields-empty">No hay campos respondidos para este ID.</p>');
+				renderSelectedFieldsPreview();
+				return;
+			}
+
+			var selectedMap = {};
+			selectedFieldIds.forEach(function(fieldId) {
+				selectedMap[String(fieldId)] = true;
+			});
+
+			var html = '';
+			currentFields.forEach(function(field) {
+				var isChecked = !!selectedMap[field.field_id];
+				html += '<label class="bform-export-checkbox-item">';
+				html += '<input type="checkbox" class="bform-export-field-checkbox" data-field-id="' + escapeHtml(field.field_id) + '"' + (isChecked ? ' checked' : '') + ' />';
+				html += '<span>' + escapeHtml(field.question) + '</span>';
+				html += '</label>';
+			});
+
+			$fieldsPicker.html(html);
+			renderSelectedFieldsPreview();
+		}
+
+		function loadFieldsForResponse(responseId) {
+			if (!currentFormId || !responseId) {
+				resetDynamicFieldState('Selecciona un ID de respuesta para cargar los campos respondidos.');
+				return;
+			}
+
+			if (!window.bformAdmin || !window.bformAdmin.ajaxUrl || !window.bformAdmin.analyticsModalNonce) {
+				resetDynamicFieldState('No se pudo inicializar la carga de campos.');
+				return;
+			}
+
+			if ($fieldsPicker.length) {
+				$fieldsPicker.html('<p class="bform-export-fields-empty">Cargando campos respondidos...</p>');
+			}
+
+			if ($previewBody.length) {
+				$previewBody.html('<p class="bform-export-preview-empty">Cargando previsualización...</p>');
+			}
+
+			var requestToken = ++loadRequestToken;
+
+			$.post(window.bformAdmin.ajaxUrl, {
+				action: 'bform_get_analytics_export_response_fields',
+				nonce: window.bformAdmin.analyticsModalNonce,
+				form_id: currentFormId,
+				response_id: responseId
+			})
+				.done(function(response) {
+					if (requestToken !== loadRequestToken) {
+						return;
+					}
+
+					if (!response || !response.success || !response.data) {
+						resetDynamicFieldState('No fue posible obtener los campos para este ID.');
+						return;
+					}
+
+					currentFields = normalizeResponseFields(response.data.fields || []);
+					selectedFieldIds = currentFields.map(function(field) {
+						return field.field_id;
+					});
+
+					renderFieldPicker();
+				})
+				.fail(function() {
+					if (requestToken !== loadRequestToken) {
+						return;
+					}
+
+					resetDynamicFieldState('Hubo un problema al cargar los campos respondidos.');
+				});
+		}
+
+		function updateCurrentResponsePreview() {
+			if (!$currentResponsePreview.length || !$responseSelect.length) {
+				return;
+			}
+
+			var responseId = parseInt($responseSelect.val() || '0', 10);
+			if (!isNaN(responseId) && responseId > 0) {
+				$currentResponsePreview.text(String(responseId));
+				return;
+			}
+
+			$currentResponsePreview.text('—');
+		}
+
+		function openModal(formId, formName, responseIds) {
+			currentFormId = formId;
+			fillResponseSelector(responseIds);
+			resetDynamicFieldState('Selecciona un ID de respuesta para cargar los campos respondidos.');
+			updateCurrentResponsePreview();
+
+			if (formName) {
+				$modalTitle.text('Exportación PDF: ' + formName);
+			} else {
+				$modalTitle.text(defaultTitle);
+			}
+
+			$modal.removeAttr('hidden').addClass('is-open');
+			$('body').addClass('bform-modal-open');
+		}
+
+		function closeModal() {
+			currentFormId = 0;
+			loadRequestToken++;
+			$modal.removeClass('is-open').attr('hidden', 'hidden');
+			$modalTitle.text(defaultTitle);
+			fillResponseSelector([]);
+			resetDynamicFieldState('Selecciona un ID de respuesta para cargar los campos respondidos.');
+			updateCurrentResponsePreview();
+			$('body').removeClass('bform-modal-open');
+		}
+
+		$(document).on('click', '.bform-open-export-modal', function() {
+			var $button = $(this);
+			var formId = parseInt($button.attr('data-form-id') || '0', 10);
+			var formName = $button.attr('data-form-name') || '';
+			var responseIds = parseResponseIds($button.attr('data-response-ids') || '');
+
+			if (isNaN(formId) || formId <= 0) {
+				return;
+			}
+
+			openModal(formId, formName, responseIds);
+		});
+
+		$responseSelect.on('change', function() {
+			var selectedResponseId = parseInt($responseSelect.val() || '0', 10);
+			if (!isNaN(selectedResponseId) && selectedResponseId > 0) {
+				loadFieldsForResponse(selectedResponseId);
+			} else {
+				resetDynamicFieldState('Selecciona un ID de respuesta para cargar los campos respondidos.');
+			}
+
+			updateCurrentResponsePreview();
+		});
+
+		$modal.on('change', '.bform-export-field-checkbox', function() {
+			selectedFieldIds = $modal.find('.bform-export-field-checkbox:checked').map(function() {
+				return ($(this).attr('data-field-id') || '').toString();
+			}).get();
+
+			renderSelectedFieldsPreview();
+		});
+
+		$generateButton.on('click', function() {
+			if (!currentFormId || !exportBaseUrl) {
+				return;
+			}
+
+			var selectedResponseId = parseInt($responseSelect.val() || '0', 10);
+			if (isNaN(selectedResponseId) || selectedResponseId <= 0) {
+				showAdminToast('Selecciona un ID de respuesta para exportar el PDF.', 'error');
+				return;
+			}
+
+			if (!selectedFieldIds.length) {
+				showAdminToast('Marca al menos un campo para incluir en el PDF.', 'error');
+				return;
+			}
+
+			var destination = '';
+			var selectedFieldsValue = selectedFieldIds.join(',');
+
+			try {
+				var url = new URL(exportBaseUrl, window.location.origin);
+				url.searchParams.set('filter_form_id', String(currentFormId));
+				url.searchParams.set('response_id', String(selectedResponseId));
+				url.searchParams.set('selected_fields', selectedFieldsValue);
+
+				destination = url.toString();
+			} catch (error) {
+				destination = exportBaseUrl + '&filter_form_id=' + encodeURIComponent(String(currentFormId));
+				destination += '&response_id=' + encodeURIComponent(String(selectedResponseId));
+				destination += '&selected_fields=' + encodeURIComponent(selectedFieldsValue);
+			}
+
+			if (!destination) {
+				return;
+			}
+
+			window.location.href = destination;
+		});
+
+		$modal.on('click', '.bform-close-export-modal', function() {
+			closeModal();
+		});
+
+		$modal.on('click', function(event) {
+			if (event.target === this) {
+				closeModal();
+			}
+		});
+
+		$(document).on('keydown', function(event) {
+			if ('Escape' === event.key && $modal.hasClass('is-open')) {
+				closeModal();
+			}
+		});
+	}
+
+	function initTemplatesLibrary() {
+		var $app = $('.bform-templates-wrap');
+		if (!$app.length) {
+			return;
+		}
+
+		var $cards = $app.find('.bform-template-library-card');
+		var hasCards = $cards.length > 0;
+
+		var $selectionBar = $app.find('.bform-template-selection-bar');
+		var $selectionCount = $selectionBar.find('.bform-template-selection-count');
+		var $useButton = $selectionBar.find('.bform-template-use-btn');
+		var $combineButton = $selectionBar.find('.bform-template-combine-btn');
+		var $useForm = $app.find('#bform-template-use-form');
+		var $useFormTemplateInput = $useForm.find('.bform-template-use-input');
+		var $combineForm = $app.find('#bform-template-combine-form');
+		var $combineInputsContainer = $combineForm.find('.bform-template-combine-inputs');
+
+		function setCardSelected($card, isSelected) {
+			$card.toggleClass('is-selected', !!isSelected);
+			$card.attr('aria-pressed', isSelected ? 'true' : 'false');
+		}
+
+		function syncSelectionState() {
+			if (!hasCards) {
+				$selectionCount.text('0');
+				$useButton.prop('disabled', true);
+				$combineButton.prop('disabled', true);
+				$selectionBar.removeClass('is-visible').prop('hidden', true);
+				return;
+			}
+
+			var selectedCount = $app.find('.bform-template-library-card.is-selected').length;
+
+			$selectionCount.text(String(selectedCount));
+			$useButton.prop('disabled', selectedCount !== 1);
+			$combineButton.prop('disabled', selectedCount < 2);
+
+			if (selectedCount > 0) {
+				$selectionBar.prop('hidden', false).addClass('is-visible');
+				return;
+			}
+
+			$selectionBar.removeClass('is-visible').prop('hidden', true);
+		}
+
+		function toggleCardSelection($card) {
+			var currentlySelected = $card.hasClass('is-selected');
+			setCardSelected($card, !currentlySelected);
+			syncSelectionState();
+		}
+
+		function getSelectedTemplateIds() {
+			var ids = [];
+
+			$app.find('.bform-template-library-card.is-selected').each(function() {
+				var raw = parseInt($(this).attr('data-template-id') || '0', 10);
+				if (!isNaN(raw) && raw > 0) {
+					ids.push(raw);
+				}
+			});
+
+			return ids;
+		}
+
+		if (hasCards) {
+			$app.on('click', '.bform-template-library-card', function(event) {
+				if ($(event.target).closest('.bform-template-card-action, .bform-template-selection-check').length) {
+					return;
+				}
+
+				toggleCardSelection($(this));
+			});
+
+			$app.on('keydown', '.bform-template-library-card', function(event) {
+				if ('Enter' !== event.key && ' ' !== event.key) {
+					return;
+				}
+
+				event.preventDefault();
+				toggleCardSelection($(this));
+			});
+
+			$app.on('click', '.bform-template-selection-check', function(event) {
+				event.preventDefault();
+				event.stopPropagation();
+				toggleCardSelection($(this).closest('.bform-template-library-card'));
+			});
+		}
+
+		$app.on('click', '.bform-template-card-action', function(event) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			var $actionButton = $(this);
+			var actionType = ($actionButton.attr('data-action') || '').toString();
+			var actionUrl = ($actionButton.attr('data-action-url') || '').toString();
+
+			if (!actionUrl) {
+				return;
+			}
+
+			if (actionType === 'delete') {
+				showConfirmNotification('¿Deseas eliminar esta plantilla?', function() {
+					window.location.href = actionUrl;
+				});
+				return;
+			}
+
+			window.location.href = actionUrl;
+		});
+
+		$app.on('click', '.bform-template-use-btn', function(event) {
+			event.preventDefault();
+
+			if (!$useForm.length) {
+				return;
+			}
+
+			var selectedIds = getSelectedTemplateIds();
+			if (selectedIds.length !== 1) {
+				return;
+			}
+
+			$useFormTemplateInput.val(String(selectedIds[0]));
+			$useForm.trigger('submit');
+		});
+
+		$app.on('click', '.bform-template-combine-btn', function(event) {
+			event.preventDefault();
+
+			if (!$combineForm.length) {
+				return;
+			}
+
+			var selectedIds = getSelectedTemplateIds();
+			if (selectedIds.length < 2) {
+				return;
+			}
+
+			$combineInputsContainer.empty();
+			selectedIds.forEach(function(id) {
+				$combineInputsContainer.append('<input type="hidden" name="merge_template_ids[]" value="' + String(id) + '" />');
+			});
+
+			$combineForm.trigger('submit');
+		});
+
+		syncSelectionState();
+	}
+
 	function getCurrentUserIdForDraft() {
 		if (window.bformAdmin && window.bformAdmin.currentUserId) {
 			return String(window.bformAdmin.currentUserId);
@@ -464,6 +964,10 @@
 		var draggedType = '';
 		var formId = parseInt($app.attr('data-form-id') || '0', 10) || 0;
 		var draftId = ($app.attr('data-draft-id') || '').toString().trim();
+		var $templateSaveForm = $app.find('#bform-constructor-save-template-form');
+		var $templateNameInput = $templateSaveForm.find('.bform-template-form-name');
+		var $templateCategoryInput = $templateSaveForm.find('.bform-template-form-category');
+		var $templateSchemaInput = $templateSaveForm.find('.bform-template-form-schema');
 		var dragAutoScroll = {
 			active: false,
 			speed: 0,
@@ -618,16 +1122,22 @@
 			}
 			if (type === 'radio' || type === 'checkbox' || type === 'select') {
 				field.settings.options = ['Opción 1', 'Opción 2'];
+				if (type === 'radio') {
+					field.settings.allow_other_option = false;
+				}
 			}
 			if (type === 'canvas') {
 				field.settings.line_width = 2;
-				field.settings.stroke_color = '#1f2937';
+				field.settings.stroke_color = '#2d3748';
 			}
 			if (type === 'file') {
 				field.settings.allowed_extensions = ['pdf', 'jpg', 'png'];
 			}
 			if (type === 'number') {
 				field.settings.number_preset = 'none';
+			}
+			if (type === 'textarea') {
+				field.settings.display_only = false;
 			}
 
 			return field;
@@ -672,6 +1182,17 @@
 			return field.settings.options;
 		}
 
+		function ensureRadioOtherOption(field) {
+			if (!field || field.type !== 'radio') {
+				return false;
+			}
+
+			field.settings = field.settings || {};
+			field.settings.allow_other_option = !!field.settings.allow_other_option;
+
+			return field.settings.allow_other_option;
+		}
+
 		function getLabelSuggestion(fieldType) {
 			var suggestions = {
 				text: 'Ej: Nombres completos',
@@ -688,6 +1209,89 @@
 			};
 
 			return suggestions[fieldType] || 'Ej: Nombre del campo';
+		}
+
+		function stripTextareaFormatting(text) {
+			if (text === undefined || text === null) {
+				return '';
+			}
+
+			return text
+				.toString()
+				.replace(/<\s*br\s*\/?\s*>/gi, ' ')
+				.replace(/<\/?\s*(strong|b|em|i|u)\s*>/gi, '')
+				.replace(/\s+/g, ' ')
+				.trim();
+		}
+
+		function ensureTextareaSettings(field) {
+			if (!field || field.type !== 'textarea') {
+				return;
+			}
+
+			field.settings = field.settings || {};
+			field.settings.display_only = !!field.settings.display_only;
+			if (field.settings.display_only) {
+				field.required = false;
+			}
+		}
+
+		function applyDescriptionTextStyle(tagName) {
+			var field = currentField();
+			if (!field) {
+				return;
+			}
+
+			if (tagName !== 'strong' && tagName !== 'em' && tagName !== 'u') {
+				return;
+			}
+
+			field.settings = field.settings || {};
+			if (!field.settings.description_enabled) {
+				return;
+			}
+
+			var $descriptionInput = $app.find('.bform-prop-description-input').first();
+			if (!$descriptionInput.length) {
+				return;
+			}
+
+			var inputNode = $descriptionInput.get(0);
+			if (!inputNode || typeof inputNode.selectionStart !== 'number' || typeof inputNode.selectionEnd !== 'number') {
+				return;
+			}
+
+			var value = ($descriptionInput.val() || '').toString();
+			var selectionStart = inputNode.selectionStart;
+			var selectionEnd = inputNode.selectionEnd;
+			if (selectionEnd <= selectionStart) {
+				return;
+			}
+
+			var selectedText = value.substring(selectionStart, selectionEnd);
+			var openTag = '<' + tagName + '>';
+			var closeTag = '</' + tagName + '>';
+			var newValue = value.substring(0, selectionStart) + openTag + selectedText + closeTag + value.substring(selectionEnd);
+
+			field = currentField();
+			if (!field) {
+				return;
+			}
+
+			field.settings = field.settings || {};
+			field.settings.description_text = newValue;
+			$descriptionInput.val(newValue);
+
+			if (typeof inputNode.focus === 'function') {
+				inputNode.focus();
+			}
+			if (typeof inputNode.setSelectionRange === 'function') {
+				var nextStart = selectionStart + openTag.length;
+				var nextEnd = nextStart + selectedText.length;
+				inputNode.setSelectionRange(nextStart, nextEnd);
+			}
+
+			persistConstructorDraft();
 		}
 
 		function renderChoiceOptions(field) {
@@ -721,7 +1325,8 @@
 			var $type = $app.find('.bform-prop-type');
 			var $label = $app.find('.bform-prop-label');
 
-			$app.find('.bform-prop-date-format, .bform-prop-number-preset, .bform-prop-link-url, .bform-prop-link-text, .bform-prop-link-target, .bform-prop-canvas-width, .bform-prop-canvas-color, .bform-prop-choice-options, .bform-prop-description-text').attr('hidden', true);
+			$app.find('.bform-prop-date-format, .bform-prop-number-preset, .bform-prop-link-url, .bform-prop-link-text, .bform-prop-link-target, .bform-prop-canvas-width, .bform-prop-canvas-color, .bform-prop-choice-options, .bform-prop-description-text, .bform-prop-textarea-display-toggle').attr('hidden', true);
+			$app.find('.bform-choice-radio-other-toggle').attr('hidden', true);
 
 			if (!field) {
 				$emptyState.attr('hidden', false);
@@ -729,6 +1334,9 @@
 				$type.text('Sin selección');
 				$label.val('');
 				$label.attr('placeholder', 'Ej: Nombre del campo');
+				$app.find('.bform-prop-textarea-display-only-toggle').prop('checked', false);
+				$app.find('.bform-prop-required-toggle').prop('disabled', false);
+				$app.find('.bform-choice-radio-other-toggle-input').prop('checked', false);
 				renderChoiceOptions(null);
 				return;
 			}
@@ -741,14 +1349,24 @@
 			$label.attr('placeholder', getLabelSuggestion(field.type));
 
 			field.settings = field.settings || {};
+			ensureTextareaSettings(field);
+			ensureRadioOtherOption(field);
 			if (field.required === undefined) {
 				field.required = true;
 			}
+
+			var textareaDisplayOnly = field.type === 'textarea' && !!field.settings.display_only;
 			$app.find('.bform-prop-required-toggle').prop('checked', !field.required);
+			$app.find('.bform-prop-required-toggle').prop('disabled', textareaDisplayOnly);
 			$app.find('.bform-prop-description-toggle').prop('checked', !!field.settings.description_enabled);
 			$app.find('.bform-prop-description-input').val(field.settings.description_text || '');
 			if (field.settings.description_enabled) {
 				$app.find('.bform-prop-description-text').attr('hidden', false);
+			}
+
+			if (field.type === 'textarea') {
+				$app.find('.bform-prop-textarea-display-toggle').attr('hidden', false);
+				$app.find('.bform-prop-textarea-display-only-toggle').prop('checked', textareaDisplayOnly);
 			}
 
 			if (field.type === 'date') {
@@ -771,13 +1389,19 @@
 
 			if (field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') {
 				$app.find('.bform-prop-choice-options').attr('hidden', false);
+				if (field.type === 'radio') {
+					$app.find('.bform-choice-radio-other-toggle').attr('hidden', false);
+					$app.find('.bform-choice-radio-other-toggle-input').prop('checked', !!field.settings.allow_other_option);
+				} else {
+					$app.find('.bform-choice-radio-other-toggle-input').prop('checked', false);
+				}
 				renderChoiceOptions(field);
 			}
 
 			if (field.type === 'canvas') {
 				$app.find('.bform-prop-canvas-width, .bform-prop-canvas-color').attr('hidden', false);
 				$app.find('.bform-prop-canvas-width-input').val((field.settings && field.settings.line_width) || 2);
-				$app.find('.bform-prop-canvas-color-input').val((field.settings && field.settings.stroke_color) || '#1f2937');
+				$app.find('.bform-prop-canvas-color-input').val((field.settings && field.settings.stroke_color) || '#2d3748');
 			}
 		}
 
@@ -804,14 +1428,23 @@
 						$field.addClass('is-selected');
 					}
 					var labelText = (field.label || field.type || 'Campo');
+					if (field.type === 'textarea') {
+						labelText = stripTextareaFormatting(labelText);
+					}
 					$field.append('<label>' + $('<div/>').text(labelText).html() + '</label>');
 					var helperText = field.placeholder || ('Tipo: ' + (field.type || 'campo'));
 					if (field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') {
 						var options = Array.isArray(field.settings && field.settings.options) ? field.settings.options : [];
 						helperText = options.length ? ('Opciones: ' + options.join(', ')) : 'Sin opciones';
+						if (field.type === 'radio' && field.settings && field.settings.allow_other_option) {
+							helperText = helperText.indexOf('Opciones: ') === 0 ? (helperText + ', Otros') : 'Opciones: Otros';
+						}
 					}
 					if (field.type === 'file') {
 						helperText = 'Tipos permitidos: PDF, JPG, PNG';
+					}
+					if (field.type === 'textarea' && field.settings && field.settings.display_only) {
+						helperText = 'Solo muestra texto (input deshabilitado)';
 					}
 					$field.append('<div class="bform-input-placeholder">' + $('<div/>').text(helperText).html() + '</div>');
 
@@ -872,10 +1505,16 @@
 			}
 
 			var labelText = (field.label || field.type || 'Campo');
+			if (field.type === 'textarea') {
+				labelText = stripTextareaFormatting(labelText);
+			}
 			var helperText = field.placeholder || ('Tipo: ' + (field.type || 'campo'));
 			if (field.type === 'radio' || field.type === 'checkbox' || field.type === 'select') {
 				var options = Array.isArray(field.settings && field.settings.options) ? field.settings.options : [];
 				helperText = options.length ? ('Opciones: ' + options.join(', ')) : 'Sin opciones';
+				if (field.type === 'radio' && field.settings && field.settings.allow_other_option) {
+					helperText = helperText.indexOf('Opciones: ') === 0 ? (helperText + ', Otros') : 'Opciones: Otros';
+				}
 			}
 			if (field.type === 'file') {
 				helperText = 'Tipos permitidos: PDF, JPG, PNG';
@@ -886,6 +1525,9 @@
 				if (presetLabel) {
 					helperText = 'Validación: ' + presetLabel;
 				}
+			}
+			if (field.type === 'textarea' && field.settings && field.settings.display_only) {
+				helperText = 'Solo muestra texto (input deshabilitado)';
 			}
 
 			$fieldCard.find('label').first().text(labelText);
@@ -982,6 +1624,37 @@
 				.fail(function() {
 					$status.text('Error al guardar el formulario');
 				});
+		}
+
+		function saveConstructorTemplate() {
+			if (!$templateSaveForm.length) {
+				return;
+			}
+
+			var templateName = ($app.find('.bform-form-name-input').val() || '').toString().trim();
+			if (!templateName) {
+				templateName = 'Plantilla sin título';
+			}
+
+			var schemaJson = '';
+			try {
+				schemaJson = JSON.stringify(schema);
+			} catch (error) {
+				showAdminToast('No se pudo serializar el esquema del formulario.', 'error');
+				return;
+			}
+
+			$templateNameInput.val(templateName);
+			var templateCategory = ($app.attr('data-template-category') || $templateCategoryInput.val() || 'Constructor').toString().trim();
+			if (!templateCategory) {
+				templateCategory = 'Constructor';
+			}
+
+			$templateCategoryInput.val(templateCategory);
+			$templateSchemaInput.val(schemaJson);
+
+			$app.find('.bform-constructor-status').text('Guardando plantilla...');
+			$templateSaveForm.trigger('submit');
 		}
 
 		$app.on('dragstart', '.bform-draggable-field', function(event) {
@@ -1125,6 +1798,24 @@
 			persistConstructorDraft();
 		});
 
+		$app.on('change', '.bform-prop-textarea-display-only-toggle', function() {
+			var field = currentField();
+			if (!field || field.type !== 'textarea') { return; }
+			field.settings = field.settings || {};
+			field.settings.display_only = $(this).is(':checked');
+			if (field.settings.display_only) {
+				field.required = false;
+			}
+			renderProperties();
+			syncSelectedFieldPreview();
+		});
+
+		$app.on('click', '.bform-prop-description-style-btn', function(event) {
+			event.preventDefault();
+			var tagName = ($(this).attr('data-format-tag') || '').toString().trim().toLowerCase();
+			applyDescriptionTextStyle(tagName);
+		});
+
 		$app.on('change', '.bform-prop-date-format-select', function() {
 			var field = currentField();
 			if (!field || field.type !== 'date') { return; }
@@ -1236,6 +1927,17 @@
 			renderSections();
 		});
 
+		$app.on('change', '.bform-choice-radio-other-toggle-input', function() {
+			var field = currentField();
+			if (!field || field.type !== 'radio') {
+				return;
+			}
+
+			field.settings = field.settings || {};
+			field.settings.allow_other_option = $(this).is(':checked');
+			syncSelectedFieldPreview();
+		});
+
 		$app.on('input change', '.bform-prop-canvas-width-input', function() {
 			var field = currentField();
 			if (!field || field.type !== 'canvas') { return; }
@@ -1304,6 +2006,11 @@
 			}
 
 			window.location.href = window.bformAdmin.logicPageUrl + '&' + params.toString();
+		});
+
+		$app.on('click', '.bform-constructor-template-btn', function(event) {
+			event.preventDefault();
+			saveConstructorTemplate();
 		});
 
 		$app.on('click', '.bform-save-constructor', saveConstructorSchema);
@@ -1829,9 +2536,11 @@
 		initAdminToasts();
 		initConfirmNotifications();
 		copyShortcode();
+		initTemplatesLibrary();
 		initConstructor();
 		initLogicEditor();
 		initAnalyticsModal();
+		initAnalyticsExportModal();
 		decorateActionButtons($(document));
 	});
 
