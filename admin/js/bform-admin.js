@@ -372,12 +372,15 @@
 		var $currentResponsePreview = $modal.find('.bform-export-current-response-id');
 		var $fieldsPicker = $modal.find('#bformExportFieldsPicker');
 		var $previewBody = $modal.find('#bformExportPreviewBody');
+		var $printModeInputs = $modal.find('input[name="bformExportPrintMode"]');
+		var $declarationText = $modal.find('#bformExportDeclarationText');
 		var defaultTitle = $modalTitle.text();
 		var exportBaseUrl = $modal.attr('data-export-base-url') || '';
 		var currentFormId = 0;
 		var currentFields = [];
 		var selectedFieldIds = [];
 		var loadRequestToken = 0;
+		var defaultDeclarationText = ($declarationText.attr('data-default-text') || '').toString();
 
 		function escapeHtml(text) {
 			return $('<div>').text(text || '').html();
@@ -463,6 +466,15 @@
 			return normalized;
 		}
 
+		function getSelectedPrintMode() {
+			var selectedMode = $printModeInputs.filter(':checked').val();
+			if (selectedMode !== 'blank' && selectedMode !== 'with_data') {
+				return 'with_data';
+			}
+
+			return selectedMode;
+		}
+
 		function renderSelectedFieldsPreview() {
 			if (!$previewBody.length) {
 				return;
@@ -474,6 +486,7 @@
 			}
 
 			var selectedMap = {};
+			var isBlankMode = getSelectedPrintMode() === 'blank';
 			selectedFieldIds.forEach(function(fieldId) {
 				selectedMap[String(fieldId)] = true;
 			});
@@ -486,7 +499,7 @@
 
 				html += '<div class="bform-export-entry-row">';
 				html += '<div class="bform-export-entry-question">' + escapeHtml(field.question) + '</div>';
-				html += '<div class="bform-export-entry-answer">' + escapeHtml(field.answer) + '</div>';
+				html += '<div class="bform-export-entry-answer">' + (isBlankMode ? '____________________________' : escapeHtml(field.answer)) + '</div>';
 				html += '</div>';
 			});
 
@@ -599,6 +612,10 @@
 			fillResponseSelector(responseIds);
 			resetDynamicFieldState('Selecciona un ID de respuesta para cargar los campos respondidos.');
 			updateCurrentResponsePreview();
+			$printModeInputs.filter('[value="with_data"]').prop('checked', true);
+			if ($declarationText.length) {
+				$declarationText.val(defaultDeclarationText);
+			}
 
 			if (formName) {
 				$modalTitle.text('Exportación PDF: ' + formName);
@@ -618,6 +635,10 @@
 			fillResponseSelector([]);
 			resetDynamicFieldState('Selecciona un ID de respuesta para cargar los campos respondidos.');
 			updateCurrentResponsePreview();
+			$printModeInputs.filter('[value="with_data"]').prop('checked', true);
+			if ($declarationText.length) {
+				$declarationText.val(defaultDeclarationText);
+			}
 			$('body').removeClass('bform-modal-open');
 		}
 
@@ -653,6 +674,10 @@
 			renderSelectedFieldsPreview();
 		});
 
+		$printModeInputs.on('change', function() {
+			renderSelectedFieldsPreview();
+		});
+
 		$generateButton.on('click', function() {
 			if (!currentFormId || !exportBaseUrl) {
 				return;
@@ -671,18 +696,24 @@
 
 			var destination = '';
 			var selectedFieldsValue = selectedFieldIds.join(',');
+			var declarationValue = $declarationText.length ? ($declarationText.val() || '').toString() : '';
+			var printModeValue = getSelectedPrintMode();
 
 			try {
 				var url = new URL(exportBaseUrl, window.location.origin);
 				url.searchParams.set('filter_form_id', String(currentFormId));
 				url.searchParams.set('response_id', String(selectedResponseId));
 				url.searchParams.set('selected_fields', selectedFieldsValue);
+				url.searchParams.set('pdf_mode', printModeValue);
+				url.searchParams.set('declaration_text', declarationValue);
 
 				destination = url.toString();
 			} catch (error) {
 				destination = exportBaseUrl + '&filter_form_id=' + encodeURIComponent(String(currentFormId));
 				destination += '&response_id=' + encodeURIComponent(String(selectedResponseId));
 				destination += '&selected_fields=' + encodeURIComponent(selectedFieldsValue);
+				destination += '&pdf_mode=' + encodeURIComponent(printModeValue);
+				destination += '&declaration_text=' + encodeURIComponent(declarationValue);
 			}
 
 			if (!destination) {

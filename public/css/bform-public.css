@@ -220,6 +220,40 @@
 	border: 1px solid #dbe2ea;
 	border-radius: 8px;
 	background: #fff;
+	width: 100%;
+	max-width: 420px;
+	height: auto;
+	touch-action: none;
+	cursor: crosshair;
+}
+
+.bform-runtime-canvas-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 10px;
+}
+
+.bform-runtime-canvas:focus {
+	outline: 2px solid var(--uleam-primary);
+	outline-offset: 2px;
+}
+
+.bform-runtime-canvas-clear {
+	min-height: 36px;
+	padding: 0 14px;
+	border: 1px solid var(--uleam-border);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--uleam-text-main);
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.bform-runtime-canvas-clear:hover {
+	border-color: var(--uleam-primary);
+	color: var(--uleam-primary);
 }
 
 .bform-runtime-actions {

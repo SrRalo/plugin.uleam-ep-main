@@ -1698,11 +1698,13 @@ class Bform_Admin {
 	 * @since    1.0.0
 	 * @param    int $response_id Response ID filter.
 	 * @param    int $form_id Form ID filter.
-	 * @param    array $selected_field_ids Field IDs selected from export UI.
+	 * @param    array  $selected_field_ids Field IDs selected from export UI.
+	 * @param    string $print_mode Output mode: with_data or blank.
+	 * @param    string $declaration_text Declaration text block.
 	 */
-	private function export_analytics_pdf( $response_id, $form_id, $selected_field_ids = array() ) {
+	private function export_analytics_pdf( $response_id, $form_id, $selected_field_ids = array(), $print_mode = 'with_data', $declaration_text = '' ) {
 		if ( ! $this->ensure_dompdf_available() ) {
-			wp_die( esc_html__( 'No se encontró Dompdf. Instala dependencias con Composer en el plugin.', 'bform' ), 500 );
+			wp_die( esc_html__( 'No se encontró Dompdf en vendor/. Este plugin requiere dependencias empaquetadas dentro del proyecto.', 'bform' ), 500 );
 		}
 
 		$row = $this->get_analytics_pdf_source_row( $response_id, $form_id );
@@ -1723,27 +1725,60 @@ class Bform_Admin {
 
 		$question_answers = $this->build_analytics_pdf_question_answers( $schema, $datos_usuario );
 		$question_answers = $this->filter_analytics_pdf_question_answers( $question_answers, $selected_field_ids );
-		$html = $this->build_analytics_pdf_html( $row, $question_answers );
 
-		$dompdf = new \Dompdf\Dompdf(
+		$mode = sanitize_key( (string) $print_mode );
+		if ( ! in_array( $mode, array( 'with_data', 'blank' ), true ) ) {
+			$mode = 'with_data';
+		}
+
+		$declaration = sanitize_textarea_field( (string) $declaration_text );
+		if ( '' === trim( $declaration ) ) {
+			$declaration = $this->get_default_analytics_pdf_declaration_text();
+		}
+
+		if ( 'blank' === $mode ) {
+			foreach ( $question_answers as $index => $entry ) {
+				if ( ! is_array( $entry ) ) {
+					continue;
+				}
+
+				$question_answers[ $index ]['answer'] = '';
+			}
+		}
+
+		$html = $this->build_analytics_pdf_html(
+			$row,
+			$question_answers,
 			array(
-				'isRemoteEnabled' => false,
-				'defaultFont' => 'DejaVu Sans',
+				'print_mode' => $mode,
+				'declaration_text' => $declaration,
 			)
 		);
-		$dompdf->loadHtml( $html, 'UTF-8' );
-		$dompdf->setPaper( 'A4', 'portrait' );
-		$dompdf->render();
 
-		$response_export_id = isset( $row['response_id'] ) ? absint( $row['response_id'] ) : 0;
-		$filename = 'uleam-respuesta-' . ( $response_export_id > 0 ? $response_export_id : 'pdf' ) . '-' . gmdate( 'Ymd-His' ) . '.pdf';
+		try {
+			$dompdf = new \Dompdf\Dompdf(
+				array(
+					'isRemoteEnabled' => false,
+					'defaultFont' => 'DejaVu Sans',
+				)
+			);
+			$dompdf->loadHtml( $html, 'UTF-8' );
+			$dompdf->setPaper( 'A4', 'portrait' );
+			$dompdf->render();
 
-		nocache_headers();
-		header( 'Content-Type: application/pdf' );
-		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+			$response_export_id = isset( $row['response_id'] ) ? absint( $row['response_id'] ) : 0;
+			$filename = 'uleam-respuesta-' . ( $response_export_id > 0 ? $response_export_id : 'pdf' ) . '-' . gmdate( 'Ymd-His' ) . '.pdf';
 
-		echo $dompdf->output();
-		exit;
+			nocache_headers();
+			header( 'Content-Type: application/pdf' );
+			header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+
+			echo $dompdf->output();
+			exit;
+		} catch ( \Throwable $error ) {
+			error_log( '[Bform PDF Export] ' . $error->getMessage() );
+			wp_die( esc_html__( 'No se pudo generar el PDF en este momento. Verifica dependencias de Dompdf e inténtalo de nuevo.', 'bform' ), 500 );
+		}
 	}
 
 	/**
@@ -1822,7 +1857,11 @@ class Bform_Admin {
 	 * @return   bool
 	 */
 	private function ensure_dompdf_available() {
-		if ( class_exists( '\\Dompdf\\Dompdf' ) ) {
+		if (
+			class_exists( '\\Dompdf\\Dompdf' ) &&
+			class_exists( '\\Masterminds\\HTML5' ) &&
+			class_exists( '\\FontLib\\Font' )
+		) {
 			return true;
 		}
 
@@ -1831,7 +1870,17 @@ class Bform_Admin {
 			require_once $autoload_path;
 		}
 
-		return class_exists( '\\Dompdf\\Dompdf' );
+		if ( ! class_exists( '\\Dompdf\\Dompdf' ) || ! class_exists( '\\Masterminds\\HTML5' ) || ! class_exists( '\\FontLib\\Font' ) ) {
+			$activator_path = plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-bform-activator.php';
+			if ( file_exists( $activator_path ) ) {
+				require_once $activator_path;
+				if ( class_exists( 'Bform_Activator' ) ) {
+					Bform_Activator::ensure_dompdf_dependency();
+				}
+			}
+		}
+
+		return class_exists( '\\Dompdf\\Dompdf' ) && class_exists( '\\Masterminds\\HTML5' ) && class_exists( '\\FontLib\\Font' );
 	}
 
 	/**
@@ -1994,17 +2043,37 @@ class Bform_Admin {
 	}
 
 	/**
+	 * Get default declaration text for printable PDF export.
+	 *
+	 * @since    1.0.0
+	 * @return   string
+	 */
+	private function get_default_analytics_pdf_declaration_text() {
+		return __( 'Declaro que la información proporcionada es verdadera y me comprometo a cumplir con las normas y regulaciones establecidas para los cursos impartidos por la Empresa Pública Estudios y Construcciones ULEAM-EP.', 'bform' );
+	}
+
+	/**
 	 * Build PDF HTML document.
 	 *
 	 * @since    1.0.0
 	 * @param    array $row Source row.
 	 * @param    array $question_answers Ordered question/answer rows.
+	 * @param    array $options PDF render options.
 	 * @return   string
 	 */
-	private function build_analytics_pdf_html( $row, $question_answers ) {
+	private function build_analytics_pdf_html( $row, $question_answers, $options = array() ) {
 		$form_name = isset( $row['form_name'] ) ? sanitize_text_field( (string) $row['form_name'] ) : __( 'Formulario', 'bform' );
 		$response_id = isset( $row['response_id'] ) ? absint( $row['response_id'] ) : 0;
 		$submitted_at = isset( $row['response_created_at'] ) ? sanitize_text_field( (string) $row['response_created_at'] ) : '';
+		$print_mode = isset( $options['print_mode'] ) ? sanitize_key( (string) $options['print_mode'] ) : 'with_data';
+		if ( ! in_array( $print_mode, array( 'with_data', 'blank' ), true ) ) {
+			$print_mode = 'with_data';
+		}
+
+		$declaration_text = isset( $options['declaration_text'] ) ? sanitize_textarea_field( (string) $options['declaration_text'] ) : $this->get_default_analytics_pdf_declaration_text();
+		if ( '' === trim( $declaration_text ) ) {
+			$declaration_text = $this->get_default_analytics_pdf_declaration_text();
+		}
 
 		$submitted_at_label = '';
 		if ( '' !== $submitted_at ) {
@@ -2016,10 +2085,34 @@ class Bform_Admin {
 			foreach ( $question_answers as $entry ) {
 				$question = isset( $entry['question'] ) ? esc_html( (string) $entry['question'] ) : '';
 				$answer = isset( $entry['answer'] ) ? esc_html( (string) $entry['answer'] ) : '-';
+				if ( 'blank' === $print_mode ) {
+					$rows_html .= '<tr><th>' . $question . '</th><td class="answer-cell-blank">&nbsp;</td></tr>';
+					continue;
+				}
+
 				$rows_html .= '<tr><th>' . $question . '</th><td>' . $answer . '</td></tr>';
 			}
 		} else {
-			$rows_html = '<tr><th>' . esc_html__( 'Sin campos definidos', 'bform' ) . '</th><td>-</td></tr>';
+			if ( 'blank' === $print_mode ) {
+				$rows_html = '<tr><th>' . esc_html__( 'Sin campos definidos', 'bform' ) . '</th><td class="answer-cell-blank">&nbsp;</td></tr>';
+			} else {
+				$rows_html = '<tr><th>' . esc_html__( 'Sin campos definidos', 'bform' ) . '</th><td>-</td></tr>';
+			}
+		}
+
+		$declaration_lines = preg_split( '/\r\n|\r|\n/', $declaration_text );
+		$declaration_html = '';
+		if ( is_array( $declaration_lines ) && ! empty( $declaration_lines ) ) {
+			foreach ( $declaration_lines as $line ) {
+				$clean_line = trim( sanitize_textarea_field( (string) $line ) );
+				if ( '' !== $clean_line ) {
+					$declaration_html .= '<p>' . esc_html( $clean_line ) . '</p>';
+				}
+			}
+		}
+
+		if ( '' === $declaration_html ) {
+			$declaration_html = '<p>' . esc_html( $this->get_default_analytics_pdf_declaration_text() ) . '</p>';
 		}
 
 		$html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>' .
@@ -2031,6 +2124,13 @@ class Bform_Admin {
 			'th,td{padding:8px 10px;border:1px solid #E2E8F0;vertical-align:top;}' .
 			'th{width:38%;background:#FFEBEE;text-align:left;font-weight:700;}' .
 			'td{background:#fff;}' .
+			'.answer-cell-blank{height:28px;}' .
+			'.declaration{margin-top:18px;}' .
+			'.declaration-title{font-size:13px;font-weight:700;margin:0 0 8px;}' .
+			'.declaration p{margin:0 0 6px;line-height:1.45;}' .
+			'.signature-row{margin-top:16px;}' .
+			'.signature-line{display:inline-block;width:48%;font-size:12px;}' .
+			'.signature-line + .signature-line{text-align:right;}' .
 			'.footer{margin-top:14px;font-size:10px;color:#718096;text-align:right;}' .
 			'</style></head><body>' .
 			'<div class="header"><p class="title">' . esc_html__( 'Reporte de Respuesta', 'bform' ) . '</p>' .
@@ -2038,6 +2138,7 @@ class Bform_Admin {
 			'<p class="meta"><strong>' . esc_html__( 'ID de respuesta:', 'bform' ) . '</strong> ' . esc_html( (string) $response_id ) . '</p>' .
 			'<p class="meta"><strong>' . esc_html__( 'Fecha de envío:', 'bform' ) . '</strong> ' . esc_html( '' !== $submitted_at_label ? $submitted_at_label : '-' ) . '</p></div>' .
 			'<table><tbody>' . $rows_html . '</tbody></table>' .
+			'<div class="declaration"><p class="declaration-title">' . esc_html__( 'DECLARACIÓN', 'bform' ) . '</p>' . $declaration_html . '<div class="signature-row"><span class="signature-line"><strong>' . esc_html__( 'Firma del inscrito:', 'bform' ) . '</strong> ______________________</span><span class="signature-line"><strong>' . esc_html__( 'Fecha:', 'bform' ) . '</strong> ______________________</span></div></div>' .
 			'<p class="footer">' . esc_html__( 'Documento generado automáticamente por ULEAM Constructor de Formularios', 'bform' ) . '</p>' .
 			'</body></html>';
 
@@ -2362,7 +2463,9 @@ class Bform_Admin {
 				$analytics_response_id = isset( $_GET['response_id'] ) ? absint( $_GET['response_id'] ) : 0;
 				$analytics_selected_fields_raw = isset( $_GET['selected_fields'] ) ? sanitize_text_field( wp_unslash( $_GET['selected_fields'] ) ) : '';
 				$analytics_selected_fields = $this->parse_analytics_selected_fields( $analytics_selected_fields_raw );
-				$this->export_analytics_pdf( $analytics_response_id, $analytics_filter_form_id, $analytics_selected_fields );
+				$analytics_pdf_mode = isset( $_GET['pdf_mode'] ) ? sanitize_key( wp_unslash( $_GET['pdf_mode'] ) ) : 'with_data';
+				$analytics_declaration_text = isset( $_GET['declaration_text'] ) ? sanitize_textarea_field( wp_unslash( $_GET['declaration_text'] ) ) : '';
+				$this->export_analytics_pdf( $analytics_response_id, $analytics_filter_form_id, $analytics_selected_fields, $analytics_pdf_mode, $analytics_declaration_text );
 				return;
 			}
 		}

@@ -37,6 +37,11 @@ if ( ! defined( 'WPINC' ) ) {
  */
 define( 'BFORM_VERSION', '1.0.0' );
 
+$bform_autoload_path = plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
+if ( file_exists( $bform_autoload_path ) ) {
+	require_once $bform_autoload_path;
+}
+
 /**
  * The code that runs during plugin activation.
  * This action is documented in includes/class-bform-activator.php
@@ -57,6 +62,48 @@ function deactivate_bform() {
 
 register_activation_hook( __FILE__, 'activate_bform' );
 register_deactivation_hook( __FILE__, 'deactivate_bform' );
+
+/**
+ * Try dependency bootstrap on admin requests when Dompdf is missing.
+ *
+ * @since    1.0.0
+ */
+function bform_maybe_bootstrap_dependencies() {
+	if ( ! is_admin() || class_exists( '\\Dompdf\\Dompdf' ) ) {
+		return;
+	}
+
+	$last_attempt = (int) get_option( 'bform_dependency_last_attempt', 0 );
+	$cooldown = 12 * HOUR_IN_SECONDS;
+	if ( $last_attempt > 0 && ( time() - $last_attempt ) < $cooldown ) {
+		return;
+	}
+
+	update_option( 'bform_dependency_last_attempt', time(), false );
+
+	require_once plugin_dir_path( __FILE__ ) . 'includes/class-bform-activator.php';
+	Bform_Activator::ensure_dompdf_dependency();
+}
+add_action( 'admin_init', 'bform_maybe_bootstrap_dependencies' );
+
+/**
+ * Display dependency installation notice.
+ *
+ * @since    1.0.0
+ */
+function bform_render_dependency_notice() {
+	if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+
+	$message = get_option( 'bform_dependency_notice', '' );
+	if ( ! is_string( $message ) || '' === trim( $message ) ) {
+		return;
+	}
+
+	echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'ULEAM Formularios:', 'bform' ) . '</strong> ' . esc_html( $message ) . '</p></div>';
+}
+add_action( 'admin_notices', 'bform_render_dependency_notice' );
 
 /**
  * The core plugin class that is used to define internationalization,

@@ -1,4 +1,5 @@
 <?php
+	$default_export_declaration_text = __( 'Declaro que la información proporcionada es verdadera y me comprometo a cumplir con las normas y regulaciones establecidas para los cursos impartidos por la Empresa Pública Estudios y Construcciones ULEAM-EP.', 'bform' );
 
 /**
  * Provide analytics admin view for the plugin.
@@ -254,6 +255,28 @@
 								<div class="bform-export-question-picker" id="bformExportFieldsPicker" role="group" aria-label="<?php esc_attr_e( 'Campos a incluir en PDF', 'bform' ); ?>">
 									<p class="bform-export-fields-empty"><?php esc_html_e( 'Selecciona un ID de respuesta para cargar los campos respondidos.', 'bform' ); ?></p>
 								</div>
+							</section>
+
+							<hr class="bform-export-divider" />
+
+							<section class="bform-export-config-section">
+								<span class="bform-export-section-title"><?php esc_html_e( '3. Declaración y Formato', 'bform' ); ?></span>
+
+								<label class="bform-export-field-label"><?php esc_html_e( 'Modo de impresión', 'bform' ); ?></label>
+								<div class="bform-export-mode-options" role="radiogroup" aria-label="<?php esc_attr_e( 'Modo de impresión PDF', 'bform' ); ?>">
+									<label class="bform-export-mode-item">
+										<input type="radio" name="bformExportPrintMode" value="with_data" checked="checked" />
+										<span><?php esc_html_e( 'Con datos', 'bform' ); ?></span>
+									</label>
+									<label class="bform-export-mode-item">
+										<input type="radio" name="bformExportPrintMode" value="blank" />
+										<span><?php esc_html_e( 'En blanco para imprimir', 'bform' ); ?></span>
+									</label>
+								</div>
+
+								<label class="bform-export-field-label" for="bformExportDeclarationText"><?php esc_html_e( 'Texto de declaración', 'bform' ); ?></label>
+								<textarea id="bformExportDeclarationText" class="bform-export-declaration-text" rows="5" data-default-text="<?php echo esc_attr( $default_export_declaration_text ); ?>"><?php echo esc_textarea( $default_export_declaration_text ); ?></textarea>
+								<p class="bform-export-response-hint"><?php esc_html_e( 'Puedes editar este texto antes de generar el PDF. Se incluirá con líneas para firma y fecha.', 'bform' ); ?></p>
 							</section>
 
 							<button type="button" class="button button-primary bform-export-generate-btn">

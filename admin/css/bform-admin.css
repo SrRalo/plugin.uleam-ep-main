@@ -2522,6 +2522,49 @@
 	box-shadow: 0 0 0 3px var(--uleam-bg-light);
 }
 
+.bform-export-declaration-text {
+	width: 100%;
+	min-height: 110px;
+	padding: 10px 12px;
+	border: 1.5px solid var(--uleam-border);
+	border-radius: 8px;
+	background: #fff;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--uleam-text-main);
+	resize: vertical;
+	transition: all 0.2s ease;
+}
+
+.bform-export-declaration-text:focus {
+	border-color: var(--uleam-primary);
+	box-shadow: 0 0 0 3px var(--uleam-bg-light);
+	outline: none;
+}
+
+.bform-export-mode-options {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px;
+	border: 1px solid var(--uleam-border);
+	border-radius: 8px;
+	background: #fff;
+}
+
+.bform-export-mode-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--uleam-text-main);
+	cursor: pointer;
+}
+
+.bform-export-mode-item input[type='radio'] {
+	accent-color: var(--uleam-primary);
+}
+
 .bform-export-response-hint {
 	margin: -2px 0 0;
 	font-size: 11px;

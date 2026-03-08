@@ -89,6 +89,120 @@
 		});
 	}
 
+	function initCanvasRuntime() {
+		$('.bform-runtime-canvas').each(function() {
+			var canvas = this;
+			var $canvas = $(canvas);
+			var fieldId = ($canvas.attr('data-canvas-field-id') || '').toString();
+			if (!fieldId) {
+				return;
+			}
+
+			var $form = $canvas.closest('form');
+			var $hiddenInput = $form.find('[data-canvas-input-for="' + fieldId + '"]').first();
+			if (!$hiddenInput.length) {
+				return;
+			}
+
+			var context = canvas.getContext('2d');
+			if (!context) {
+				return;
+			}
+
+			var lineWidth = parseFloat($canvas.attr('data-line-width') || '2');
+			if (!Number.isFinite(lineWidth) || lineWidth <= 0) {
+				lineWidth = 2;
+			}
+			if (lineWidth > 20) {
+				lineWidth = 20;
+			}
+
+			var strokeColor = ($canvas.attr('data-stroke-color') || '#2d3748').toString();
+			if (!/^#[0-9a-f]{3,8}$/i.test(strokeColor)) {
+				strokeColor = '#2d3748';
+			}
+
+			context.lineCap = 'round';
+			context.lineJoin = 'round';
+			context.lineWidth = lineWidth;
+			context.strokeStyle = strokeColor;
+
+			var isDrawing = false;
+			var hasSignature = hasValue($hiddenInput.val());
+
+			function getPoint(event) {
+				var rect = canvas.getBoundingClientRect();
+				var scaleX = rect.width ? (canvas.width / rect.width) : 1;
+				var scaleY = rect.height ? (canvas.height / rect.height) : 1;
+				return {
+					x: (event.clientX - rect.left) * scaleX,
+					y: (event.clientY - rect.top) * scaleY
+				};
+			}
+
+			function syncHiddenInput() {
+				var payload = hasSignature ? canvas.toDataURL('image/png') : '';
+				$hiddenInput.val(payload);
+				$hiddenInput.trigger('input').trigger('change');
+			}
+
+			function drawDot(point) {
+				context.beginPath();
+				context.fillStyle = strokeColor;
+				context.arc(point.x, point.y, Math.max(lineWidth / 2, 1), 0, Math.PI * 2, false);
+				context.fill();
+			}
+
+			function startDrawing(event) {
+				event.preventDefault();
+				isDrawing = true;
+				var point = getPoint(event);
+				context.beginPath();
+				context.moveTo(point.x, point.y);
+				drawDot(point);
+				hasSignature = true;
+				if (typeof canvas.setPointerCapture === 'function') {
+					canvas.setPointerCapture(event.pointerId);
+				}
+			}
+
+			function drawLine(event) {
+				if (!isDrawing) {
+					return;
+				}
+				event.preventDefault();
+				var point = getPoint(event);
+				context.lineTo(point.x, point.y);
+				context.stroke();
+			}
+
+			function stopDrawing(event) {
+				if (!isDrawing) {
+					return;
+				}
+				isDrawing = false;
+				if (event && typeof canvas.releasePointerCapture === 'function') {
+					try {
+						canvas.releasePointerCapture(event.pointerId);
+					} catch (error) {
+						/* noop */
+					}
+				}
+				syncHiddenInput();
+			}
+
+			$canvas.on('pointerdown', startDrawing);
+			$canvas.on('pointermove', drawLine);
+			$canvas.on('pointerup pointerleave pointercancel', stopDrawing);
+
+			$form.on('click', '[data-canvas-clear-for="' + fieldId + '"]', function() {
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				hasSignature = false;
+				syncHiddenInput();
+			});
+		});
+	}
+
 	function syncRadioOtherInputs($scope) {
 		var $root = ($scope && $scope.length) ? $scope : $(document);
 		$root.find('[data-other-for-field-id]').each(function() {
@@ -152,7 +266,13 @@
 			var isValid = true;
 			var invalidElement = firstInput;
 
-			if (inputType === 'radio') {
+			if (inputType === 'hidden' && hasValue($(firstInput).attr('data-canvas-input-for'))) {
+				isValid = hasValue($fieldInputs.first().val());
+				var $canvas = $section.find('[data-canvas-field-id="' + targetFieldId + '"]').first();
+				if ($canvas.length) {
+					invalidElement = $canvas.get(0);
+				}
+			} else if (inputType === 'radio') {
 				var $checkedRadio = $fieldInputs.filter(':checked').first();
 				isValid = $checkedRadio.length > 0;
 
@@ -571,6 +691,7 @@
 	};
 
 	$(function() {
+		initCanvasRuntime();
 		initVisibilityRuntime();
 	});
 

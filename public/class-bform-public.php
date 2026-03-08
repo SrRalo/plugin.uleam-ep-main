@@ -574,7 +574,25 @@ class Bform_Public {
 				}
 				break;
 			case 'canvas':
-				$html .= '<canvas class="bform-runtime-canvas" data-field-id="' . esc_attr( $field_id ) . '" width="320" height="120"></canvas>';
+				$line_width = isset( $settings['line_width'] ) ? (float) $settings['line_width'] : 2;
+				if ( $line_width < 1 ) {
+					$line_width = 1;
+				}
+				if ( $line_width > 20 ) {
+					$line_width = 20;
+				}
+
+				$stroke_color = isset( $settings['stroke_color'] ) ? sanitize_hex_color( $settings['stroke_color'] ) : '';
+				if ( '' === $stroke_color ) {
+					$stroke_color = '#2d3748';
+				}
+
+				$canvas_id = $input_name . '_canvas';
+				$html .= '<div class="bform-runtime-canvas-wrap">';
+				$html .= '<canvas id="' . esc_attr( $canvas_id ) . '" class="bform-runtime-canvas" data-canvas-field-id="' . esc_attr( $field_id ) . '" data-line-width="' . esc_attr( (string) $line_width ) . '" data-stroke-color="' . esc_attr( $stroke_color ) . '" width="320" height="120" tabindex="0" role="img" aria-label="' . esc_attr__( 'Firma digital', 'bform' ) . '"></canvas>';
+				$html .= '<input type="hidden" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" class="bform-runtime-canvas-input" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" data-canvas-input-for="' . esc_attr( $field_id ) . '" value="" />';
+				$html .= '<button type="button" class="bform-runtime-canvas-clear" data-canvas-clear-for="' . esc_attr( $field_id ) . '">' . esc_html__( 'Limpiar firma', 'bform' ) . '</button>';
+				$html .= '</div>';
 				break;
 			default:
 				$html .= '<input type="text" id="' . esc_attr( $input_name ) . '" name="' . esc_attr( $input_name ) . '" placeholder="' . $default_placeholder . '" data-field-id="' . esc_attr( $field_id ) . '" data-required="' . esc_attr( $required_data_attr ) . '" />';

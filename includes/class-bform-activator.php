@@ -78,6 +78,37 @@ class Bform_Activator {
 		dbDelta( $sql_forms );
 		dbDelta( $sql_responses );
 
+		self::ensure_dompdf_dependency();
+
+	}
+
+	/**
+	 * Ensure Dompdf dependency is available.
+	 *
+	 * Loads bundled vendor autoload and validates Dompdf class.
+	 *
+	 * @since    1.0.0
+	 * @return   bool
+	 */
+	public static function ensure_dompdf_dependency() {
+		if ( class_exists( '\\Dompdf\\Dompdf' ) && class_exists( '\\Masterminds\\HTML5' ) && class_exists( '\\FontLib\\Font' ) ) {
+			delete_option( 'bform_dependency_notice' );
+			return true;
+		}
+
+		$plugin_root = dirname( __DIR__ );
+		$autoload_path = $plugin_root . '/vendor/autoload.php';
+		if ( file_exists( $autoload_path ) ) {
+			require_once $autoload_path;
+			if ( class_exists( '\\Dompdf\\Dompdf' ) && class_exists( '\\Masterminds\\HTML5' ) && class_exists( '\\FontLib\\Font' ) ) {
+				delete_option( 'bform_dependency_notice' );
+				return true;
+			}
+		}
+
+		update_option( 'bform_dependency_notice', __( 'Dompdf está incompleto en vendor/. Verifica que existan todas sus dependencias (masterminds/html5, phenx/php-font-lib, phenx/php-svg-lib, sabberworm/php-css-parser) o ejecuta composer install antes de desplegar.', 'bform' ), false );
+
+		return false;
 	}
 
 }
