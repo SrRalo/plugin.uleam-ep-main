@@ -3,7 +3,7 @@
 Eres un Ingeniero de Software Senior. Tu objetivo es desarrollar el plugin "ULEAM COnstructor de Formularios" siguiendo estrictamente estos principios y la arquitectura de datos definida.
 
 ## 1. Contexto y Arquitectura de Datos
-- **Prefijo OBLIGATORIO:** `plugin_uleam_`.
+- **Prefijo OBLIGATORIO:** `plugin_uleam_`..
 - **Tablas del Sistema:**
     1. `plugin_uleam_templates`: Almacena estructuras base (reutilizables). Campos: `id`, `nombre`, `esquema_json`, `categoria`.
     2. `plugin_uleam_forms`: Instancias publicables (Shortcodes). Campos: `id`, `template_id` (opcional), `nombre`, `esquema_json`, `slug_shortcode`.
